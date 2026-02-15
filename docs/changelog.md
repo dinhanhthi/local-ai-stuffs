@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.3
+
+- Fix "Sync All" and "Pause/Resume All" buttons to also affect AI services, not just repositories
+
 ## v0.0.2
 
 - Add built-in service definitions for Gemini (`~/.gemini`), Agents (`~/.agents`), OpenCode (`~/.config/opencode`), Codex (`~/.codex`), and Cursor (`~/.cursor`)

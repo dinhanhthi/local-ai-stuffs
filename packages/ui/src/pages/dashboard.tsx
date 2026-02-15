@@ -51,7 +51,8 @@ export function DashboardPage() {
     refetchUnlinked();
   }, [refetch, refetchServices, refetchConflicts, refetchUnlinked]);
 
-  const allPaused = repos.length > 0 && repos.every((r) => r.status === 'paused');
+  const allItems = [...repos, ...services];
+  const allPaused = allItems.length > 0 && allItems.every((r) => r.status === 'paused');
   const hasConflicts = conflicts.length > 0;
   const filtered = conflictFilter ? repos.filter((r) => r.syncSummary.conflicts > 0) : repos;
   const favorites = filtered.filter((r) => r.isFavorite);
@@ -60,7 +61,10 @@ export function DashboardPage() {
   const handleSyncAll = async () => {
     setSyncing(true);
     try {
-      await api.sync.trigger();
+      await Promise.all([
+        api.sync.trigger(),
+        ...services.filter((s) => s.status === 'active').map((s) => api.services.sync(s.id)),
+      ]);
       await refetch();
       await refetchServices();
     } finally {
@@ -89,13 +93,18 @@ export function DashboardPage() {
   const handleToggleSync = async () => {
     setTogglingSync(true);
     try {
-      const action = allPaused ? api.repos.resume : api.repos.pause;
-      await Promise.all(
-        repos
+      const repoAction = allPaused ? api.repos.resume : api.repos.pause;
+      const svcAction = allPaused ? api.services.resume : api.services.pause;
+      await Promise.all([
+        ...repos
           .filter((r) => (allPaused ? r.status === 'paused' : r.status === 'active'))
-          .map((r) => action(r.id)),
-      );
+          .map((r) => repoAction(r.id)),
+        ...services
+          .filter((s) => (allPaused ? s.status === 'paused' : s.status === 'active'))
+          .map((s) => svcAction(s.id)),
+      ]);
       await refetch();
+      await refetchServices();
     } finally {
       setTogglingSync(false);
     }
@@ -132,7 +141,7 @@ export function DashboardPage() {
                   </TooltipContent>
                 </Tooltip>
               )}
-              {repos.length > 0 && (
+              {allItems.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
