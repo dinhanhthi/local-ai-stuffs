@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.2
+
+- Add built-in service definitions for Gemini (`~/.gemini`), Agents (`~/.agents`), OpenCode (`~/.config/opencode`), Codex (`~/.codex`), and Cursor (`~/.cursor`)
+
 ## v0.0.1
 
 - Central store as a git repo for AI config files with bidirectional sync using git-based 3-way merge

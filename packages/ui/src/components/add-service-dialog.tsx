@@ -41,7 +41,9 @@ export function AddServiceDialog({ open, onOpenChange, onAdded }: AddServiceDial
     try {
       await api.services.create(serviceType);
       onAdded();
-      onOpenChange(false);
+      setAvailable((prev) =>
+        prev.map((s) => (s.serviceType === serviceType ? { ...s, registered: true } : s)),
+      );
     } catch {
       // Error handled by api client
     } finally {
@@ -87,11 +89,17 @@ export function AddServiceDialog({ open, onOpenChange, onAdded }: AddServiceDial
                       <div className="flex items-center gap-2 font-medium text-sm">
                         <span>{svc.name}</span>
                         {svc.serviceType.startsWith('custom-') ? (
-                          <Badge variant="secondary">Custom</Badge>
+                          <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                            Custom
+                          </Badge>
                         ) : svc.detected ? (
-                          <Badge variant="success">Detected</Badge>
+                          <Badge variant="success" className="px-1.5 py-0 text-[10px]">
+                            Detected
+                          </Badge>
                         ) : (
-                          <Badge variant="outline">Not detected</Badge>
+                          <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                            Not detected
+                          </Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground font-mono truncate">

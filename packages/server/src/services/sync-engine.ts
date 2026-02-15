@@ -1334,6 +1334,21 @@ export class SyncEngine {
 
         let newCount = 0;
 
+        // Clean up tracked files whose parent path goes through a symlink
+        for (const e of existing) {
+          if (
+            e.file_type !== 'symlink' &&
+            (await parentPathHasSymlink(svc.localPath, e.relative_path))
+          ) {
+            this.db
+              .prepare(
+                'DELETE FROM tracked_files WHERE service_config_id = ? AND relative_path = ?',
+              )
+              .run(svc.id, e.relative_path);
+            existingPaths.delete(e.relative_path);
+          }
+        }
+
         // Scan target service folder for new files
         const patterns = getServiceEnabledPatterns(this.db, svc.id, def.patterns);
         const svcIgnorePatterns = expandIgnorePatterns(

@@ -6,6 +6,10 @@ import type { ScannedEntry } from './repo-scanner.js';
 /**
  * Scan a service directory for files matching the given patterns.
  * Optionally accepts ignore patterns to exclude files from the results.
+ *
+ * Symlinks are handled the same way as in repo scanning:
+ * - Regular files whose parent path traverses a symlink are excluded
+ * - Root segments that are themselves symlinks are tracked as symlink entries
  */
 export async function scanServiceFiles(
   servicePath: string,
@@ -17,7 +21,16 @@ export async function scanServiceFiles(
 
   const ignore = ['.DS_Store', '**/.DS_Store', ...ignorePatterns];
 
+  // Collect root segments from patterns to check for symlinks
+  const rootSegmentsToCheck = new Set<string>();
+
   for (const pattern of patterns) {
+    const firstSlash = pattern.indexOf('/');
+    const rootSegment = firstSlash === -1 ? pattern : pattern.substring(0, firstSlash);
+    if (!rootSegment.includes('*') && !rootSegment.includes('?')) {
+      rootSegmentsToCheck.add(rootSegment);
+    }
+
     const matches = await glob(pattern, {
       cwd: servicePath,
       nodir: true,
@@ -40,6 +53,17 @@ export async function scanServiceFiles(
   for (const entry of found) {
     if (!(await parentPathHasSymlink(servicePath, entry.path))) {
       filtered.push(entry);
+    }
+  }
+
+  // Check root segments for symlinks (e.g. "skills" itself might be a symlink)
+  for (const segment of rootSegmentsToCheck) {
+    const fullPath = path.join(servicePath, segment);
+    if (await isSymlink(fullPath)) {
+      if (!seenPaths.has(segment)) {
+        seenPaths.add(segment);
+        filtered.push({ path: segment, isSymlink: true });
+      }
     }
   }
 

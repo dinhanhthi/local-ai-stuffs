@@ -22,6 +22,36 @@ export const SERVICE_DEFINITIONS: Record<string, ServiceDefinition> = {
       'scripts/**',
     ],
   },
+  gemini: {
+    serviceType: 'gemini',
+    name: 'Gemini',
+    defaultPath: path.join(os.homedir(), '.gemini'),
+    patterns: ['GEMINI.md', 'settings.json', 'skills/**'],
+  },
+  agents: {
+    serviceType: 'agents',
+    name: 'Agents',
+    defaultPath: path.join(os.homedir(), '.agents'),
+    patterns: ['skills/**'],
+  },
+  opencode: {
+    serviceType: 'opencode',
+    name: 'OpenCode',
+    defaultPath: path.join(os.homedir(), '.config', 'opencode'),
+    patterns: ['skills/**'],
+  },
+  cursor: {
+    serviceType: 'cursor',
+    name: 'Cursor',
+    defaultPath: path.join(os.homedir(), '.cursor'),
+    patterns: ['skills/**', 'mcp.json'],
+  },
+  codex: {
+    serviceType: 'codex',
+    name: 'Codex',
+    defaultPath: path.join(os.homedir(), '.codex'),
+    patterns: ['skills/**'],
+  },
 };
 
 // Runtime registry for custom service definitions (populated from DB on startup)

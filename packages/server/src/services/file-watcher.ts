@@ -104,6 +104,7 @@ export class FileWatcherService extends EventEmitter {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 200 },
       ignored: ignorePatterns,
+      followSymlinks: false,
     });
 
     watcher.on('all', (event, filePath) => {
@@ -163,6 +164,7 @@ export class FileWatcherService extends EventEmitter {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 200 },
       ignored: ['.DS_Store', '**/.DS_Store', ...ignorePatterns],
+      followSymlinks: false,
     });
 
     watcher.on('all', (event, filePath) => {
