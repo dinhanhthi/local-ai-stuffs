@@ -1,0 +1,41 @@
+{
+  "name": "ai-sync",
+  "author": "Anh-Thi Dinh",
+  "version": "0.0.1",
+  "repository": "https://github.com/anhthiding/ai-sync",
+  "private": true,
+  "license": "MIT",
+  "description": "Centralized management tool for AI configuration files across Git repositories",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,ui -c blue,green \"pnpm --filter @ai-sync/server dev\" \"pnpm --filter @ai-sync/ui dev\"",
+    "build": "pnpm --filter @ai-sync/ui build && pnpm --filter @ai-sync/server build",
+    "start": "node packages/server/dist/index.js",
+    "dev:server": "pnpm --filter @ai-sync/server dev",
+    "dev:ui": "pnpm --filter @ai-sync/ui dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm --filter @ai-sync/server test",
+    "test:watch": "pnpm --filter @ai-sync/server test:watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.55.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  },
+  "packageManager": "pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc"
+}

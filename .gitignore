@@ -1,0 +1,32 @@
+node_modules/
+dist/
+store/
+data/
+*.db
+*.db-journal
+.DS_Store
+.env
+.env.local
+packages/ui/build/
+__pycache__/
+
+
+# AI config files (managed by AI Sync)
+.agent/
+.agents/
+.aider*
+.claude-plugin/
+.claude/
+.copilot/
+.cursor/
+.cursorrules
+.gemini/
+.github/copilot-instructions.md
+.github/skills
+.ipynb_checkpoints
+.mcp.json
+.opencode/
+.windsurfrules
+CLAUDE.md
+GEMINI.md
+# End AI Sync managed

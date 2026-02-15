@@ -1,0 +1,7 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "prettier.configPath": "./prettier.config.js",
+  "css.customData": [],
+  "css.lint.unknownAtRules": "ignore"
+}

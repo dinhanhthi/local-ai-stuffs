@@ -1,0 +1,38 @@
+{
+  "name": "@ai-sync/server",
+  "author": "Anh-Thi Dinh",
+  "version": "0.0.1",
+  "repository": "https://github.com/anhthiding/ai-sync",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "DEV=1 tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/static": "^8.1.0",
+    "@fastify/websocket": "^11.0.0",
+    "better-sqlite3": "^11.7.0",
+    "chokidar": "^4.0.0",
+    "fastify": "^5.2.0",
+    "glob": "^11.0.0",
+    "picomatch": "^4.0.3",
+    "simple-git": "^3.27.0",
+    "uuid": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "@types/picomatch": "^4.0.2",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
+  }
+}
