@@ -14,12 +14,13 @@ export const SERVICE_DEFINITIONS: Record<string, ServiceDefinition> = {
     name: 'Claude Code',
     defaultPath: path.join(os.homedir(), '.claude'),
     patterns: [
-      'commands/**',
-      'projects/**',
-      'skills/**',
       'CLAUDE.md',
-      'settings.json',
+      'commands/**',
+      'plugins/installed_plugins.json',
+      'projects/**',
       'scripts/**',
+      'settings.json',
+      'skills/**',
     ],
   },
   gemini: {
@@ -44,7 +45,7 @@ export const SERVICE_DEFINITIONS: Record<string, ServiceDefinition> = {
     serviceType: 'cursor',
     name: 'Cursor',
     defaultPath: path.join(os.homedir(), '.cursor'),
-    patterns: ['skills/**', 'mcp.json'],
+    patterns: ['mcp.json', 'skills/**'],
   },
   codex: {
     serviceType: 'codex',

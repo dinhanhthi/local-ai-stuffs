@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Sync - Synchronize Your AI Configs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              border: 'hsl(240 3.7% 15.9%)',
+              input: 'hsl(240 3.7% 15.9%)',
+              background: 'hsl(240 10% 3.9%)',
+              foreground: 'hsl(0 0% 98%)',
+              card: 'hsl(240 10% 3.9%)',
+              'card-foreground': 'hsl(0 0% 98%)',
+              muted: 'hsl(240 3.7% 15.9%)',
+              'muted-foreground': 'hsl(240 5% 64.9%)',
+              accent: 'hsl(240 3.7% 15.9%)',
+              'accent-foreground': 'hsl(0 0% 98%)',
+              primary: 'hsl(0 0% 98%)',
+              'primary-foreground': 'hsl(240 5.9% 10%)',
+              secondary: 'hsl(240 3.7% 15.9%)',
+              'secondary-foreground': 'hsl(0 0% 98%)',
+              ring: 'hsl(240 4.9% 83.9%)',
+            },
+            borderRadius: {
+              lg: '0.5rem',
+              md: '0.375rem',
+              sm: '0.25rem',
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        background: hsl(240 10% 3.9%);
+        color: hsl(0 0% 98%);
+      }
+      @keyframes fade-up {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fade-up {
+        animation: fade-up 0.6s ease-out forwards;
+        opacity: 0;
+      }
+      .delay-100 {
+        animation-delay: 100ms;
+      }
+      .delay-200 {
+        animation-delay: 200ms;
+      }
+      .delay-300 {
+        animation-delay: 300ms;
+      }
+      @keyframes flow {
+        to {
+          stroke-dashoffset: -20;
+        }
+      }
+      .flow-line {
+        stroke-dasharray: 10;
+        animation: flow 1s linear infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .animate-fade-up {
+          animation: none;
+          opacity: 1;
+        }
+        .flow-line {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <header class="flex items-center justify-between py-6 animate-fade-up">
+        <a href="/" class="flex items-center gap-2 text-xl font-bold tracking-tight">
+          <img src="logo.svg" alt="AI Sync logo" class="h-7 w-7" />
+          AI Sync
+          <span
+            class="rounded-full bg-muted px-2 py-0.5 text-sm h-fit font-medium text-muted-foreground"
+            >v0.0.3</span
+          >
+        </a>
+        <nav class="flex items-center gap-6">
+          <a
+            href="#why"
+            class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >Why</a
+          >
+          <a
+            href="#how"
+            class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >How it works</a
+          >
+          <a
+            href="#install"
+            class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >Install</a
+          >
+          <a
+            href="https://github.com/dinhanhthi/ai-sync"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
+              />
+            </svg>
+            GitHub
+          </a>
+        </nav>
+      </header>
+
+      <!-- Hero -->
+      <section class="py-24 text-center animate-fade-up delay-100">
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight mb-6">
+          Sync Your AI Configs<br />
+          <span
+            class="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent"
+            >Across All Your Machines</span
+          >
+        </h1>
+        <p class="mx-auto max-w-2xl text-lg text-muted-foreground mb-10 leading-relaxed">
+          One tool to rule them all. Manage
+          <code class="rounded bg-muted px-1.5 py-0.5 text-sm font-mono text-emerald-400"
+            >CLAUDE.md</code
+          >,
+          <code class="rounded bg-muted px-1.5 py-0.5 text-sm font-mono text-emerald-400"
+            >.cursorrules</code
+          >,
+          <code class="rounded bg-muted px-1.5 py-0.5 text-sm font-mono text-emerald-400"
+            >GEMINI.md</code
+          >
+          and more from a single source of truth.
+        </p>
+        <div class="flex items-center justify-center gap-3">
+          <a
+            href="#install"
+            class="inline-flex items-center rounded-full bg-primary text-primary-foreground px-6 py-2.5 text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
+          >
+            Get Started
+          </a>
+          <a
+            href="#how"
+            class="inline-flex items-center rounded-full border border-border bg-background px-6 py-2.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+          >
+            Learn More
+          </a>
+        </div>
+      </section>
+
+      <!-- Why Section -->
+      <section id="why" class="py-20 animate-fade-up delay-200">
+        <h2 class="text-3xl font-bold tracking-tight text-center mb-12">Why AI Sync?</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-base font-semibold mb-2">The Problem</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              You use Cursor, Claude, Copilot&hellip; each has its own config files scattered across
+              dozens of repos.
+            </p>
+          </div>
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-base font-semibold mb-2">The Privacy</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              These configs often contain personal preferences or sensitive prompts you don't want
+              to commit to public repos.
+            </p>
+          </div>
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+            </div>
+            <h3 class="text-base font-semibold mb-2">The Chaos</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              Switching machines? Re-cloning? You lose your carefully crafted rules. Copy-pasting
+              manually is tedious and error-prone.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- How it Works -->
+      <section id="how" class="py-20">
+        <h2 class="text-3xl font-bold tracking-tight text-center mb-4">How It Works</h2>
+        <p class="text-center text-muted-foreground mb-12">
+          A background service watches your files and syncs them to a central git store.
+        </p>
+
+        <div
+          class="rounded-lg border border-border bg-card p-6 sm:p-10 flex flex-col items-center mb-8"
+        >
+          <svg
+            width="700"
+            height="260"
+            viewBox="0 0 700 260"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-full max-w-2xl h-auto"
+          >
+            <!-- Central Store -->
+            <rect
+              x="250"
+              y="30"
+              width="200"
+              height="80"
+              rx="8"
+              fill="hsl(240 10% 6%)"
+              stroke="hsl(240 5% 26%)"
+              stroke-width="1.5"
+            />
+            <text
+              x="350"
+              y="62"
+              fill="hsl(0 0% 98%)"
+              font-family="Inter, sans-serif"
+              font-size="16"
+              font-weight="600"
+              text-anchor="middle"
+            >
+              Central Store
+            </text>
+            <text
+              x="350"
+              y="82"
+              fill="hsl(240 5% 55%)"
+              font-family="Inter, sans-serif"
+              font-size="14"
+              text-anchor="middle"
+            >
+              (Local Git Repo)
+            </text>
+
+            <!-- Sync Engine -->
+            <circle
+              cx="350"
+              cy="155"
+              r="32"
+              fill="hsl(240 10% 6%)"
+              stroke="hsl(240 5% 26%)"
+              stroke-width="1.5"
+            />
+            <text
+              x="350"
+              y="150"
+              fill="hsl(240 5% 65%)"
+              font-family="Inter, sans-serif"
+              font-size="14"
+              text-anchor="middle"
+            >
+              Sync
+            </text>
+            <text
+              x="350"
+              y="168"
+              fill="hsl(240 5% 65%)"
+              font-family="Inter, sans-serif"
+              font-size="14"
+              text-anchor="middle"
+            >
+              Engine
+            </text>
+
+            <!-- Target Repo A -->
+            <rect
+              x="30"
+              y="190"
+              width="140"
+              height="50"
+              rx="8"
+              fill="hsl(240 10% 6%)"
+              stroke="hsl(152 69% 31%)"
+              stroke-width="1.5"
+            />
+            <text
+              x="100"
+              y="220"
+              fill="hsl(0 0% 98%)"
+              font-family="Inter, sans-serif"
+              font-size="16"
+              text-anchor="middle"
+            >
+              Target Repo A
+            </text>
+
+            <!-- Target Repo B -->
+            <rect
+              x="530"
+              y="190"
+              width="140"
+              height="50"
+              rx="8"
+              fill="hsl(240 10% 6%)"
+              stroke="hsl(152 69% 31%)"
+              stroke-width="1.5"
+            />
+            <text
+              x="600"
+              y="220"
+              fill="hsl(0 0% 98%)"
+              font-family="Inter, sans-serif"
+              font-size="16"
+              text-anchor="middle"
+            >
+              Target Repo B
+            </text>
+
+            <!-- Connections -->
+            <path
+              d="M100 190 C 100 130, 250 80, 260 75"
+              stroke="hsl(240 5% 35%)"
+              stroke-width="1.5"
+              fill="none"
+              class="flow-line"
+            />
+            <path
+              d="M600 190 C 600 130, 450 80, 440 75"
+              stroke="hsl(240 5% 35%)"
+              stroke-width="1.5"
+              fill="none"
+              class="flow-line"
+            />
+          </svg>
+          <p class="text-sm text-muted-foreground mt-4">
+            Files are synced bidirectionally. Changes in Repo A &rarr; Store &rarr; Repo B.
+          </p>
+        </div>
+
+        <!-- 3-Way Merge -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="rounded-lg border border-border bg-card p-6 text-center">
+            <div class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Step 1
+            </div>
+            <h3 class="text-base font-semibold mb-1">Base</h3>
+            <p class="text-sm text-muted-foreground mb-3">Last known state</p>
+            <div class="rounded-full bg-muted px-3 py-2">
+              <code class="text-sm font-mono text-muted-foreground">v1.0</code>
+            </div>
+          </div>
+          <div class="rounded-lg border border-border bg-card p-6 text-center">
+            <div class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Step 2
+            </div>
+            <h3 class="text-base font-semibold mb-1">Local Change</h3>
+            <p class="text-sm text-muted-foreground mb-3">You edited rules in Repo A</p>
+            <div class="rounded-full bg-muted px-3 py-2">
+              <code class="text-sm font-mono text-emerald-400">v1.1 (Modified)</code>
+            </div>
+          </div>
+          <div class="rounded-lg border border-border bg-card p-6 text-center">
+            <div class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Step 3
+            </div>
+            <h3 class="text-base font-semibold mb-1">Auto-Merge</h3>
+            <p class="text-sm text-muted-foreground mb-3">Syncs to Store w/o conflict</p>
+            <div class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <span class="text-sm font-medium text-emerald-400">Synced</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section class="py-20">
+        <h2 class="text-3xl font-bold tracking-tight text-center mb-12">Main Features</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold mb-1.5">Centralized Management</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              Keep your
+              <code class="rounded bg-muted px-1 py-0.5 text-xs font-mono">CLAUDE.md</code>,
+              <code class="rounded bg-muted px-1 py-0.5 text-xs font-mono">.cursorrules</code>,
+              <code class="rounded bg-muted px-1 py-0.5 text-xs font-mono">GEMINI.md</code> in one
+              safe place.
+            </p>
+          </div>
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3"
+                />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold mb-1.5">Bidirectional Sync</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              Edit in your repo OR in the dashboard. Changes propagate everywhere.
+            </p>
+          </div>
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25h-13.5A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25h-13.5A2.25 2.25 0 0 1 3 12V5.25"
+                />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold mb-1.5">Multi-Machine</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              Works across Mac, Linux, and Windows. Syncs path mappings automatically.
+            </p>
+          </div>
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold mb-1.5">Web Dashboard</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              A beautiful local UI to manage repos, view files, and resolve conflicts.
+            </p>
+          </div>
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+                />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold mb-1.5">Git Integration</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              Automatically manages
+              <code class="rounded bg-muted px-1 py-0.5 text-xs font-mono">.gitignore</code> in
+              target repos so your personal configs stay personal.
+            </p>
+          </div>
+          <div
+            class="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
+          >
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <svg
+                class="h-5 w-5 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold mb-1.5">Conflict Resolution</h3>
+            <p class="text-sm text-muted-foreground leading-relaxed">
+              Visual 3-way merge tool for when you edit the same file on two machines.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Multi-machine -->
+      <section class="py-20">
+        <h2 class="text-3xl font-bold tracking-tight text-center mb-4">Work Across Machines</h2>
+        <p class="text-center text-muted-foreground mb-12">
+          Your store is just a Git repo. Push it to GitHub (private) and pull it on another machine.
+        </p>
+        <div class="rounded-lg border border-border bg-card p-6 sm:p-10 flex flex-col items-center">
+          <svg
+            width="700"
+            height="220"
+            viewBox="0 0 700 220"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-full max-w-2xl h-auto"
+          >
+            <!-- Cloud -->
+            <ellipse
+              cx="350"
+              cy="45"
+              rx="55"
+              ry="28"
+              fill="hsl(240 10% 6%)"
+              stroke="hsl(240 5% 26%)"
+              stroke-width="1.5"
+            />
+            <text
+              x="350"
+              y="49"
+              fill="hsl(0 0% 98%)"
+              font-family="Inter, sans-serif"
+              font-size="16"
+              font-weight="600"
+              text-anchor="middle"
+            >
+              Cloud Git
+            </text>
+
+            <!-- Machine A -->
+            <rect
+              x="80"
+              y="140"
+              width="120"
+              height="60"
+              rx="8"
+              fill="hsl(240 10% 6%)"
+              stroke="hsl(240 5% 26%)"
+              stroke-width="1.5"
+            />
+            <text
+              x="140"
+              y="168"
+              fill="hsl(0 0% 98%)"
+              font-family="Inter, sans-serif"
+              font-size="16"
+              font-weight="600"
+              text-anchor="middle"
+            >
+              Machine A
+            </text>
+            <text
+              x="140"
+              y="184"
+              fill="hsl(240 5% 55%)"
+              font-family="Inter, sans-serif"
+              font-size="10"
+              text-anchor="middle"
+            >
+              (Mac)
+            </text>
+
+            <!-- Machine B -->
+            <rect
+              x="500"
+              y="140"
+              width="120"
+              height="60"
+              rx="8"
+              fill="hsl(240 10% 6%)"
+              stroke="hsl(240 5% 26%)"
+              stroke-width="1.5"
+            />
+            <text
+              x="560"
+              y="168"
+              fill="hsl(0 0% 98%)"
+              font-family="Inter, sans-serif"
+              font-size="16"
+              font-weight="600"
+              text-anchor="middle"
+            >
+              Machine B
+            </text>
+            <text
+              x="560"
+              y="184"
+              fill="hsl(240 5% 55%)"
+              font-family="Inter, sans-serif"
+              font-size="10"
+              text-anchor="middle"
+            >
+              (Linux)
+            </text>
+
+            <!-- Connectors -->
+            <line
+              x1="140"
+              y1="140"
+              x2="305"
+              y2="60"
+              stroke="hsl(240 5% 35%)"
+              stroke-width="1.5"
+              stroke-dasharray="5"
+            />
+            <line
+              x1="560"
+              y1="140"
+              x2="395"
+              y2="60"
+              stroke="hsl(240 5% 35%)"
+              stroke-width="1.5"
+              stroke-dasharray="5"
+            />
+
+            <text
+              x="210"
+              y="95"
+              fill="hsl(240 5% 55%)"
+              font-family="Inter, sans-serif"
+              font-size="14"
+              text-anchor="middle"
+            >
+              git push/pull
+            </text>
+            <text
+              x="490"
+              y="95"
+              fill="hsl(240 5% 55%)"
+              font-family="Inter, sans-serif"
+              font-size="14"
+              text-anchor="middle"
+            >
+              git push/pull
+            </text>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Installation -->
+      <section id="install" class="py-20">
+        <h2 class="text-3xl font-bold tracking-tight text-center mb-12">
+          Installation &amp; Usage
+        </h2>
+
+        <div class="mx-auto max-w-2xl space-y-8">
+          <div>
+            <h3 class="text-lg font-semibold mb-3">1. Install</h3>
+            <div class="relative rounded-lg border border-border bg-muted/50 p-4 overflow-x-auto">
+              <button
+                onclick="copyToClipboard(this)"
+                class="absolute top-3 right-3 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+              >
+                Copy
+              </button>
+              <pre class="text-sm font-mono text-foreground/90 leading-relaxed">
+git clone https://github.com/dinhanhthi/ai-sync
+cd ai-sync
+pnpm install
+pnpm build</pre
+              >
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold mb-3">2. Run</h3>
+            <div class="relative rounded-lg border border-border bg-muted/50 p-4 overflow-x-auto">
+              <button
+                onclick="copyToClipboard(this)"
+                class="absolute top-3 right-3 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+              >
+                Copy
+              </button>
+              <pre
+                class="text-sm font-mono text-foreground/90 leading-relaxed"
+              ><span class="text-muted-foreground"># Start the app</span>
+pnpm start
+
+<span class="text-muted-foreground"># Open http://localhost:2703</span></pre>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold mb-3">3. Update</h3>
+            <div class="relative rounded-lg border border-border bg-muted/50 p-4 overflow-x-auto">
+              <button
+                onclick="copyToClipboard(this)"
+                class="absolute top-3 right-3 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+              >
+                Copy
+              </button>
+              <pre class="text-sm font-mono text-foreground/90 leading-relaxed">
+git pull
+pnpm install
+pnpm build
+pnpm start</pre
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="border-t border-border py-8 mt-12">
+        <p class="text-center text-sm text-muted-foreground">
+          &copy; 2026 AI Sync. Built for developers.
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      function copyToClipboard(button) {
+        const pre = button.parentElement.querySelector('pre');
+        const text = pre.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          const original = button.textContent;
+          button.textContent = 'Copied!';
+          setTimeout(() => {
+            button.textContent = original;
+          }, 2000);
+        });
+      }
+    </script>
+  </body>
+</html>
