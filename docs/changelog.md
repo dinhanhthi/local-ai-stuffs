@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.1
+
+- Fix excessive git commits in data repo on every server startup (only `lastSeen` timestamp change in `machines.json`)
+
 ## v0.1.0
 
 - Add desktop notifications (macOS, Windows, Linux) when new conflicts are detected

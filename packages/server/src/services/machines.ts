@@ -63,13 +63,39 @@ function sortKeys<T>(obj: Record<string, T>): Record<string, T> {
   return sorted;
 }
 
+/**
+ * Register/update the current machine in machines.json.
+ * Only writes the file when something meaningful changed:
+ * - Machine is new (not in file yet)
+ * - Machine name changed
+ * - lastSeen is older than 1 day (UI only shows date, not time)
+ * This avoids creating a git commit on every server startup.
+ */
 export function registerCurrentMachine(): void {
   const data = readMachinesFile();
-  data.machines[config.machineId] = {
-    name: config.machineName,
-    lastSeen: new Date().toISOString(),
-  };
-  writeMachinesFile(data);
+  const existing = data.machines[config.machineId];
+  const now = new Date();
+
+  let needsWrite = false;
+  if (!existing) {
+    needsWrite = true;
+  } else if (existing.name !== config.machineName) {
+    needsWrite = true;
+  } else {
+    const lastSeen = new Date(existing.lastSeen);
+    const ageMs = now.getTime() - lastSeen.getTime();
+    if (ageMs > 24 * 60 * 60 * 1000) {
+      needsWrite = true;
+    }
+  }
+
+  if (needsWrite) {
+    data.machines[config.machineId] = {
+      name: config.machineName,
+      lastSeen: now.toISOString(),
+    };
+    writeMachinesFile(data);
+  }
 }
 
 export function setRepoMapping(storePath: string, localPath: string): void {

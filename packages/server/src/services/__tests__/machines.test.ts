@@ -146,16 +146,29 @@ describe('registerCurrentMachine', () => {
     expect(data.machines[MACHINE_ID].lastSeen).toBeTruthy();
   });
 
-  it('updates lastSeen on subsequent calls', async () => {
+  it('skips write when lastSeen is recent (within 1 day)', () => {
     registerCurrentMachine();
     const first = readMachinesFile().machines[MACHINE_ID].lastSeen;
 
-    // Small delay to ensure different timestamp
-    await new Promise((r) => setTimeout(r, 10));
     registerCurrentMachine();
     const second = readMachinesFile().machines[MACHINE_ID].lastSeen;
 
-    expect(second >= first).toBe(true);
+    // Should be identical since lastSeen is still fresh
+    expect(second).toBe(first);
+  });
+
+  it('updates lastSeen when it is older than 1 day', () => {
+    // Manually write an old lastSeen
+    const data = readMachinesFile();
+    const oldDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    data.machines[MACHINE_ID] = { name: MACHINE_NAME, lastSeen: oldDate };
+    writeMachinesFile(data);
+
+    registerCurrentMachine();
+    const updated = readMachinesFile().machines[MACHINE_ID].lastSeen;
+
+    expect(updated).not.toBe(oldDate);
+    expect(new Date(updated).getTime()).toBeGreaterThan(new Date(oldDate).getTime());
   });
 });
 
