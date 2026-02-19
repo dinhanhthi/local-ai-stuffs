@@ -30,4 +30,7 @@ __pycache__/
 CLAUDE.md
 GEMINI.md
 ai-docs
+docs/learn
+docs/memory
+docs/plans
 # End AI Sync managed

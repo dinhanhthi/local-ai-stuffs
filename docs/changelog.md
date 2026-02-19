@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.4
+
+- Fix conflict filter not showing repos/services that have conflicts, and not filtering services at all
+
 ## v0.0.3
 
 - Fix "Sync All" and "Pause/Resume All" buttons to also affect AI services, not just repositories
