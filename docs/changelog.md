@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.0
+
+- Add desktop notifications (macOS, Windows, Linux) when new conflicts are detected
+- Notifications are deduplicated per tracked file — only new conflicts trigger a notification
+- Add toggle in Settings > General to enable/disable desktop notifications
+
 ## v0.0.4
 
 - Fix conflict filter not showing repos/services that have conflicts, and not filtering services at all

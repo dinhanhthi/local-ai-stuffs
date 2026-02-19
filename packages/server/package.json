@@ -1,7 +1,7 @@
 {
   "name": "@ai-sync/server",
   "author": "Anh-Thi Dinh",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "repository": "https://github.com/anhthiding/ai-sync",
   "private": true,
   "license": "MIT",
@@ -22,6 +22,7 @@
     "chokidar": "^4.0.0",
     "fastify": "^5.2.0",
     "glob": "^11.0.0",
+    "node-notifier": "^10.0.1",
     "picomatch": "^4.0.3",
     "simple-git": "^3.27.0",
     "uuid": "^11.0.0"
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.0",
+    "@types/node-notifier": "^8.0.5",
     "@types/picomatch": "^4.0.2",
     "@types/uuid": "^10.0.0",
     "tsx": "^4.19.0",

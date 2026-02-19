@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { resolveConflict } from '../services/conflict-detector.js';
+import { clearNotifiedConflict } from '../services/notifier.js';
 import { ensureDir } from '../services/repo-scanner.js';
 import { fileChecksum } from '../services/checksum.js';
 import { getFileMtime } from '../services/repo-scanner.js';
@@ -152,6 +153,8 @@ export function registerConflictRoutes(app: FastifyInstance, state: AppState): v
       )
       .get(req.params.id) as { tracked_file_id: string };
 
+    clearNotifiedConflict(conflict.tracked_file_id);
+
     if (result.deleted) {
       // Delete both files and remove tracking
       try {
@@ -231,6 +234,8 @@ export function registerConflictRoutes(app: FastifyInstance, state: AppState): v
            WHERE c.id = ?`,
         )
         .get(conflict.id) as { tracked_file_id: string };
+
+      clearNotifiedConflict(tf.tracked_file_id);
 
       if (result.deleted) {
         try {

@@ -279,6 +279,17 @@ export function SettingsPage() {
                     setSettings({ ...settings, auto_commit_store: checked ? 'true' : 'false' })
                   }
                 />
+                <CheckboxSettingRow
+                  label="Desktop notifications on new conflicts"
+                  settingKey="desktop_notifications"
+                  checked={settings.desktop_notifications !== 'false'}
+                  onCheckedChange={(checked) =>
+                    setSettings({
+                      ...settings,
+                      desktop_notifications: checked ? 'true' : 'false',
+                    })
+                  }
+                />
               </div>
 
               <div className="py-4 border-t">

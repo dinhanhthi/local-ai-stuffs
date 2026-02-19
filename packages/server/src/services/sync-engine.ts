@@ -23,6 +23,7 @@ import {
   isSymlink,
 } from './repo-scanner.js';
 import { createConflict } from './conflict-detector.js';
+import { sendConflictNotification, clearNotifiedConflict } from './notifier.js';
 import {
   queueStoreCommit,
   getCommittedContent,
@@ -672,6 +673,7 @@ export class SyncEngine {
 
       if (conflict) {
         this.broadcast({ type: 'conflict_created', conflict });
+        sendConflictNotification(this.db, conflict);
         this.logSync(
           target.id,
           trackedFile.relativePath,
@@ -1023,6 +1025,7 @@ export class SyncEngine {
         )
         .run(pendingConflict.id);
       this.broadcast({ type: 'conflict_resolved', conflictId: pendingConflict.id });
+      clearNotifiedConflict(trackedFileId);
     }
   }
 
@@ -1054,6 +1057,7 @@ export class SyncEngine {
 
     if (conflict) {
       this.broadcast({ type: 'conflict_created', conflict });
+      sendConflictNotification(this.db, conflict);
       this.logSync(
         target.id,
         trackedFile.relativePath,
