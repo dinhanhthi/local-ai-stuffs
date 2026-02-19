@@ -54,9 +54,14 @@ export function DashboardPage() {
   const allItems = [...repos, ...services];
   const allPaused = allItems.length > 0 && allItems.every((r) => r.status === 'paused');
   const hasConflicts = conflicts.length > 0;
-  const filtered = conflictFilter ? repos.filter((r) => r.syncSummary.conflicts > 0) : repos;
-  const favorites = filtered.filter((r) => r.isFavorite);
-  const others = filtered.filter((r) => !r.isFavorite);
+  const conflictRepoIds = new Set(conflicts.map((c) => c.repoId).filter(Boolean));
+  const conflictServiceIds = new Set(conflicts.map((c) => c.serviceId).filter(Boolean));
+  const filteredRepos = conflictFilter ? repos.filter((r) => conflictRepoIds.has(r.id)) : repos;
+  const filteredServices = conflictFilter
+    ? services.filter((s) => conflictServiceIds.has(s.id))
+    : services;
+  const favorites = filteredRepos.filter((r) => r.isFavorite);
+  const others = filteredRepos.filter((r) => !r.isFavorite);
 
   const handleSyncAll = async () => {
     setSyncing(true);
@@ -213,9 +218,13 @@ export function DashboardPage() {
                   Sync your local AI service configurations.
                 </p>
               </div>
+            ) : filteredServices.length === 0 ? (
+              <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                No services with conflicts.
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {services.map((svc) => (
+                {filteredServices.map((svc) => (
                   <ServiceCard
                     key={svc.id}
                     service={svc}
@@ -272,7 +281,7 @@ export function DashboardPage() {
                 Add Repository
               </Button>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : filteredRepos.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
               No repositories with conflicts.
             </div>
