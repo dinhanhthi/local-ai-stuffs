@@ -56,6 +56,15 @@ export class FileWatcherService extends EventEmitter {
     return true;
   }
 
+  private clearDebounceTimersForPrefix(prefix: string): void {
+    for (const [key, timer] of this.debounceTimers) {
+      if (key.startsWith(prefix)) {
+        clearTimeout(timer);
+        this.debounceTimers.delete(key);
+      }
+    }
+  }
+
   private debounce(key: string, fn: () => void): void {
     const existing = this.debounceTimers.get(key);
     if (existing) clearTimeout(existing);
@@ -125,6 +134,7 @@ export class FileWatcherService extends EventEmitter {
     if (watcher) {
       await watcher.close();
       this.targetWatchers.delete(repoId);
+      this.clearDebounceTimersForPrefix(`target:${repoId}:`);
     }
   }
 
@@ -185,6 +195,7 @@ export class FileWatcherService extends EventEmitter {
     if (watcher) {
       await watcher.close();
       this.serviceTargetWatchers.delete(serviceId);
+      this.clearDebounceTimersForPrefix(`serviceTarget:${serviceId}:`);
     }
   }
 

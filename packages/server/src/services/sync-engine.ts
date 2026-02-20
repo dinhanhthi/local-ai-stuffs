@@ -87,6 +87,7 @@ export class SyncEngine {
   private pollingTimer: NodeJS.Timeout | null = null;
   private wsClients: Set<{ send: (data: string) => void }> = new Set();
   private ignoreMatcherCache = new Map<string, picomatch.Matcher>();
+  private lastLogCleanup = 0;
 
   constructor(db: Database.Database) {
     this.db = db;
@@ -191,6 +192,7 @@ export class SyncEngine {
         await this.scanAllServicesForNewFiles();
         await this.syncAllRepos();
         await this.syncAllServices();
+        this.pruneOldSyncLogs();
       } catch (err) {
         console.error('Polling error:', err);
       }
@@ -200,12 +202,27 @@ export class SyncEngine {
     }, interval);
   }
 
+  private pruneOldSyncLogs(): void {
+    const now = Date.now();
+    // Run cleanup at most once per hour
+    if (now - this.lastLogCleanup < 3_600_000) return;
+    this.lastLogCleanup = now;
+    try {
+      this.db.prepare("DELETE FROM sync_log WHERE created_at < datetime('now', '-30 days')").run();
+    } catch (err) {
+      console.error('Failed to prune sync_log:', err);
+    }
+  }
+
   async stop(): Promise<void> {
     if (this.pollingTimer) {
       clearTimeout(this.pollingTimer);
       this.pollingTimer = null;
     }
+    this.watcher.removeAllListeners();
     await this.watcher.stopAll();
+    this.wsClients.clear();
+    this.ignoreMatcherCache.clear();
     console.log('Sync engine stopped');
   }
 

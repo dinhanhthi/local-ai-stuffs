@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.2
+
+- Fix memory leak: `sync_log` table growing unbounded — add periodic pruning of entries older than 30 days
+- Fix memory leak: WebSocket client `connect()` not clearing pending reconnect timer, causing duplicate connections
+- Fix memory leak: `SyncEngine.stop()` not removing event listeners, clearing `wsClients`, or clearing `ignoreMatcherCache`
+- Fix memory leak: debounce timers not cleaned up when individual repo/service watchers are stopped
+
 ## v0.1.1
 
 - Fix excessive git commits in data repo on every server startup (only `lastSeen` timestamp change in `machines.json`)
