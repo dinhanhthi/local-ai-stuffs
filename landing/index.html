@@ -101,9 +101,9 @@
     </style>
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased">
-    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-      <!-- Header -->
-      <header class="flex items-center justify-between py-6 animate-fade-up">
+    <!-- Fixed Header -->
+    <header class="fixed top-0 left-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border/50 animate-fade-up">
+      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
         <a
           href="/"
           class="flex items-center gap-2 text-xl font-bold tracking-tight whitespace-nowrap"
@@ -180,13 +180,13 @@
             </svg>
           </button>
         </div>
-      </header>
+      </div>
       <!-- Mobile menu -->
       <nav
         id="mobile-menu"
-        class="hidden md:hidden animate-fade-up border-b border-border pb-4 mb-4"
+        class="hidden md:hidden border-t border-border/50 bg-background/80 backdrop-blur-md"
       >
-        <div class="flex flex-col gap-3">
+        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 flex flex-col gap-3 pb-4 pt-3">
           <a
             href="#why"
             class="text-sm text-muted-foreground hover:text-foreground transition-colors px-1 py-1.5"
@@ -204,6 +204,12 @@
           >
         </div>
       </nav>
+    </header>
+
+    <!-- Spacer for fixed header -->
+    <div class="h-[65px]"></div>
+
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
 
       <!-- Hero -->
       <section class="py-24 text-center animate-fade-up delay-100">
