@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SizeLabel } from '@/components/size-label';
+import { type SizeThresholds } from '@/lib/utils';
 import {
   ChevronRight,
   ClipboardPaste,
@@ -161,6 +162,8 @@ interface FileTreeProps {
   onResolve?: (path: string, resolution: 'keep_store' | 'keep_target') => void;
   /** Called when user wants to delete a file from store and target */
   onDelete?: (path: string) => void;
+  /** Size thresholds for coloring file/folder sizes */
+  sizeThresholds?: SizeThresholds;
 }
 
 function getAllDirs(items: FileTreeItem[]): Set<string> {
@@ -214,6 +217,7 @@ export const FileTree = forwardRef(function FileTree(
     onIgnore,
     onResolve,
     onDelete,
+    sizeThresholds,
   }: FileTreeProps,
   ref: Ref<FileTreeHandle>,
 ) {
@@ -277,6 +281,7 @@ export const FileTree = forwardRef(function FileTree(
             onIgnore={onIgnore}
             onResolve={onResolve}
             onDelete={onDelete}
+            sizeThresholds={sizeThresholds}
           />
         ))}
       </div>
@@ -296,6 +301,7 @@ interface TreeNodeViewProps {
   onIgnore?: (pattern: string) => void;
   onResolve?: (path: string, resolution: 'keep_store' | 'keep_target') => void;
   onDelete?: (path: string) => void;
+  sizeThresholds?: SizeThresholds;
 }
 
 function TreeNodeView({
@@ -310,6 +316,7 @@ function TreeNodeView({
   onIgnore,
   onResolve,
   onDelete,
+  sizeThresholds,
 }: TreeNodeViewProps) {
   const isDir = node.file === null;
   const isExpanded = expanded.has(node.fullPath);
@@ -357,7 +364,7 @@ function TreeNodeView({
           )}
           {(dirSize > 0 || dirStatus) && (
             <span className={`shrink-0 flex items-center gap-1.5 ${onClone ? '' : 'ml-auto'}`}>
-              {dirSize > 0 && <SizeLabel bytes={dirSize} className="shrink-0" />}
+              {dirSize > 0 && <SizeLabel bytes={dirSize} sizeThresholds={sizeThresholds} className="shrink-0" />}
               {dirStatus && <span className="shrink-0">{folderSuffix?.(dirStatus)}</span>}
             </span>
           )}
@@ -412,6 +419,7 @@ function TreeNodeView({
                 onIgnore={onIgnore}
                 onResolve={onResolve}
                 onDelete={onDelete}
+                sizeThresholds={sizeThresholds}
               />
             ))}
           </div>

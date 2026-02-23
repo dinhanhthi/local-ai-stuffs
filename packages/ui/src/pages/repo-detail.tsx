@@ -303,7 +303,7 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
         storeSize: f.storeSize,
         suffix: (
           <>
-            {f.storeSize != null && <SizeLabel bytes={f.storeSize} className="mr-1" />}
+            {f.storeSize != null && <SizeLabel bytes={f.storeSize} sizeThresholds={sizeThresholds} className="mr-1" />}
             <SyncStatusBadge status={f.syncStatus} size="sm" />
           </>
         ),
@@ -678,7 +678,7 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
                   </Tooltip>
                   <span className="flex items-center gap-1 shrink-0">
                     <HardDrive className="h-3 w-3" />
-                    <SizeLabel bytes={target.totalStoreSize} className="text-xs" />
+                    <SizeLabel bytes={target.totalStoreSize} sizeThresholds={sizeThresholds} className="text-xs" />
                     {getSizeLevel(target.totalStoreSize, sizeThresholds) === 'blocked' && (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -815,6 +815,7 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
                   onIgnore={handleIgnore}
                   onResolve={handleResolveFile}
                   onDelete={setDeleteFilePath}
+                  sizeThresholds={sizeThresholds}
                 />
               ) : (
                 <div className="text-sm text-muted-foreground p-2 h-full flex flex-col gap-2 items-center justify-center">

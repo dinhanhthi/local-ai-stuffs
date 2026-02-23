@@ -68,30 +68,18 @@ export function getSizeLevel(
   return 'normal';
 }
 
-export type SizeColorLevel = 'normal' | 'warning' | 'danger' | 'caution';
-
-/**
- * Return a color level for displaying file/folder sizes:
- * - 1–5 MB  → warning (yellow/orange)
- * - >10 MB  → danger (red)
- * - >50 MB  → caution (violet)
- */
-export function getSizeColorLevel(bytes: number): SizeColorLevel {
-  if (bytes > 50 * MB) return 'caution';
-  if (bytes > 10 * MB) return 'danger';
-  if (bytes >= 1 * MB) return 'warning';
-  return 'normal';
-}
-
-const SIZE_COLOR_CLASSES: Record<SizeColorLevel, string> = {
+const SIZE_COLOR_CLASSES: Record<SizeLevel, string> = {
   normal: 'text-muted-foreground/60',
   warning: 'text-amber-500',
   danger: 'text-red-500',
-  caution: 'text-violet-500 font-medium',
+  blocked: 'text-violet-500 font-medium',
 };
 
-export function sizeColorClass(bytes: number): string {
-  return SIZE_COLOR_CLASSES[getSizeColorLevel(bytes)];
+export function sizeColorClass(
+  bytes: number,
+  thresholds: SizeThresholds = DEFAULT_SIZE_THRESHOLDS,
+): string {
+  return SIZE_COLOR_CLASSES[getSizeLevel(bytes, thresholds)];
 }
 
 /**

@@ -2,6 +2,7 @@
 
 ## v0.1.4
 
+- Fix size color thresholds ignoring user settings (was using hardcoded values instead of configured thresholds)
 - Fix store size calculation scanning entire directory instead of tracked files only, causing heavy I/O and log spam
 - Fix inflated service store size on dashboard
 - Remove `projects/**` from default sync patterns

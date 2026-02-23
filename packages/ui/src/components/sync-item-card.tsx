@@ -113,7 +113,7 @@ export function SyncItemCard({
                   <FileCode2 className="h-3 w-3" />
                   {syncSummary.total} files
                   <span className="inline-flex items-center gap-0.5">
-                    · <SizeLabel bytes={syncSummary.totalStoreSize} />
+                    · <SizeLabel bytes={syncSummary.totalStoreSize} sizeThresholds={sizeThresholds} />
                   </span>
                 </span>
                 {isBlocked && (
