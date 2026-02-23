@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.4
+
+- Fix dashboard showing inflated service store size by calculating from tracked files only instead of scanning entire directory
+- Remove `projects/**` from Claude Code default sync patterns (too large, machine-specific)
+- Ensure `.db/` and `.DS_Store` are always present in store `.gitignore` on startup
+- Update docs with database details, quick ignore instructions, and all supported services
+
 ## v0.1.3
 
 - Update logo: white curves on gradient background, increased curve width
