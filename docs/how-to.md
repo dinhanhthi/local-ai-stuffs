@@ -131,13 +131,40 @@ The **Settings** page has four tabs:
 
 Click the **gear icon** on any repo card to override global settings for that specific repository. Each item shows a `global` or `local` badge — local overrides take precedence, and unmodified settings automatically follow global changes.
 
-### Quick Ignore from File Tree
+### File Tree Context Menu
 
-You can also add ignore patterns directly from the file tree without opening Settings:
+Right-click any file or folder in the tree sidebar to access quick actions:
 
-1. **Right-click** a file or folder in the tree sidebar.
-2. Select **Ignore this file** or **Ignore this folder**.
-3. The pattern is saved as a **local** override for that specific repo or service — it won't affect other repos.
+#### Untrack file / Untrack folder
+
+Stops syncing a file or folder **without deleting** it from the target repo:
+
+1. **Right-click** a file or folder and select **Untrack file** or **Untrack folder**.
+2. The pattern (e.g., `.cursor/**` for a folder) is saved as a **local** override for that specific repo or service — it won't affect other repos.
+3. Matching files are removed from the **store only** — the original files in the target repo or service directory are left untouched.
+4. The file watcher restarts automatically to stop tracking the ignored paths going forward.
+
+Use this when you want to exclude files from sync but keep them in your project.
+
+#### Delete from both sides
+
+Permanently removes a file or folder from **both** the store and the target repo:
+
+1. **Right-click** a file or folder and select **Delete from both sides**.
+2. A confirmation dialog appears — this action **cannot be undone**.
+3. On confirm, the files are deleted from both the central store and the target repo or service directory, and their tracking records are removed from the database.
+
+Use this when you want to completely get rid of files from both sides. Unlike Untrack, no ignore pattern is added — if the file is recreated later, it will be picked up by the watcher again.
+
+#### Quick comparison
+
+|                          | **Untrack**                         | **Delete from both sides** |
+| ------------------------ | ----------------------------------- | -------------------------- |
+| Removes from store       | Yes                                 | Yes                        |
+| Removes from target repo | No                                  | Yes                        |
+| Adds ignore pattern      | Yes (local)                         | No                         |
+| Confirmation required    | No                                  | Yes                        |
+| Reversible               | Yes — remove the pattern to re-sync | No                         |
 
 These patterns are persisted in the local SQLite database (`<data-dir>/.db/ai-sync.db`) — not in any config file. Specifically, repo patterns go into the `repo_settings` table and service patterns go into `service_settings`.
 

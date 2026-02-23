@@ -374,7 +374,7 @@ function TreeNodeView({
               {onIgnore && (
                 <ContextMenuItem onClick={() => onIgnore(`${node.fullPath}/**`)}>
                   <EyeOff className="h-3.5 w-3.5" />
-                  Ignore this folder
+                  Untrack folder
                 </ContextMenuItem>
               )}
               {onDelete && onIgnore && <ContextMenuSeparator />}
@@ -384,7 +384,7 @@ function TreeNodeView({
                   onClick={() => onDelete(`${node.fullPath}/**`)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Delete this folder
+                  Delete from both sides
                 </ContextMenuItem>
               )}
             </ContextMenuContent>
@@ -493,7 +493,7 @@ function TreeNodeView({
           {onIgnore && (
             <ContextMenuItem onClick={() => onIgnore(node.fullPath)}>
               <EyeOff className="h-3.5 w-3.5" />
-              Ignore this file
+              Untrack file
             </ContextMenuItem>
           )}
           {onDelete && onIgnore && <ContextMenuSeparator />}
@@ -503,7 +503,7 @@ function TreeNodeView({
               onClick={() => onDelete(node.fullPath)}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete
+              Delete from both sides
             </ContextMenuItem>
           )}
         </ContextMenuContent>
