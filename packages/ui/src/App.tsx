@@ -2,7 +2,6 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Layout } from '@/components/layout';
-import { Logo } from '@/components/logo';
 import { DashboardPage } from '@/pages/dashboard';
 import { SetupPage } from '@/pages/setup';
 import { api } from '@/lib/api';
@@ -48,7 +47,7 @@ export default function App() {
   if (configured === null) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-        <Logo className="h-14 w-14" />
+        <img src="/logo.svg" alt="AI Sync" className="h-14 w-14" />
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="text-sm">Starting server...</span>

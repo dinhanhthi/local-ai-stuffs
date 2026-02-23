@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.3
+
+- Update logo: white curves on gradient background, increased curve width
+- Replace inline Logo component with static SVG asset (`/logo.svg`)
+
 ## v0.1.2
 
 - Fix memory leak: `sync_log` table growing unbounded — add periodic pruning of entries older than 30 days

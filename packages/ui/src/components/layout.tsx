@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Logo } from '@/components/logo';
 import {
   BookOpen,
   Database,
@@ -103,7 +102,7 @@ export function Layout({ children, dataDir }: { children: React.ReactNode; dataD
       <header className="border-b border-border/80 bg-white/95 backdrop-blur-sm supports-backdrop-filter:bg-white/60">
         <div className="mx-auto w-full max-w-7xl flex h-14 items-center px-4 gap-4 sm:gap-6 sm:px-6">
           <Link to="/" className="flex shrink-0 items-center gap-2">
-            <Logo className="h-8 w-8" />
+            <img src="/logo.svg" alt="AI Sync" className="h-8 w-8" />
             <span className="inline text-base font-semibold tracking-tight">AI Sync</span>
           </Link>
 
