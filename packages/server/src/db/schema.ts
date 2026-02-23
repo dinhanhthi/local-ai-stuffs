@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_sync_log_repo ON sync_log(repo_id);
 CREATE INDEX IF NOT EXISTS idx_sync_log_created ON sync_log(created_at);
 `;
 
-const DEFAULT_PATTERNS = [
+export const DEFAULT_PATTERNS = [
   '.agent/**',
   '.agents/**',
   '.aider*',
@@ -85,7 +85,7 @@ const DEFAULT_PATTERNS = [
   'GEMINI.md',
 ];
 
-const DEFAULT_IGNORE_PATTERNS = [
+export const DEFAULT_IGNORE_PATTERNS = [
   '*.swo',
   '*.swp',
   '.DS_Store',

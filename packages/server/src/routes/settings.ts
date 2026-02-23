@@ -11,6 +11,7 @@ import {
   getRepoEnabledFilePatterns,
   mapRows,
 } from '../db/index.js';
+import { DEFAULT_PATTERNS, DEFAULT_IGNORE_PATTERNS } from '../db/schema.js';
 import { setupGitignore } from '../services/gitignore-manager.js';
 import { commitStoreChanges } from '../services/store-git.js';
 import type { Repo, TrackedFile } from '../types/index.js';
@@ -50,6 +51,7 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
     if (!state.db) return reply.code(503).send({ error: 'Not configured' });
     const db = state.db;
 
+    const defaultSet = new Set(DEFAULT_PATTERNS);
     const patterns = db.prepare('SELECT * FROM file_patterns ORDER BY pattern').all() as {
       id: string;
       pattern: string;
@@ -61,6 +63,7 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
         id: p.id,
         pattern: p.pattern,
         enabled: p.enabled === 1,
+        source: (defaultSet.has(p.pattern) ? 'default' : 'user') as 'default' | 'user',
       })),
     };
   });
@@ -70,6 +73,7 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
     if (!state.db) return reply.code(503).send({ error: 'Not configured' });
     const db = state.db;
 
+    const defaultSet = new Set(DEFAULT_IGNORE_PATTERNS);
     const patterns = db.prepare('SELECT * FROM ignore_patterns ORDER BY pattern').all() as {
       id: string;
       pattern: string;
@@ -81,6 +85,7 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
         id: p.id,
         pattern: p.pattern,
         enabled: p.enabled === 1,
+        source: (defaultSet.has(p.pattern) ? 'default' : 'user') as 'default' | 'user',
       })),
     };
   });

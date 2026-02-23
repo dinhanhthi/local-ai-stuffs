@@ -107,6 +107,7 @@ export interface FilePattern {
   id?: string;
   pattern: string;
   enabled: boolean;
+  source?: 'default' | 'user';
 }
 
 export interface RepoPatternEntry {

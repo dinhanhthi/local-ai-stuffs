@@ -13,6 +13,7 @@
 - Clarify documentation on Ignore Patterns vs AI File Patterns functionality
 - Stop auto-applying .gitignore when saving file patterns — prompt user to confirm instead
 - Apply same "Apply to repo" button and post-save prompt to per-repo settings dialog
+- Show "user" badge on custom-added patterns in global Settings to distinguish from defaults, with user patterns sorted to the top
 
 ## v0.1.3
 

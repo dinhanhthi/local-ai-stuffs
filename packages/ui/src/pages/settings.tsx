@@ -25,6 +25,12 @@ function stripIds(patterns: FilePattern[]) {
   return patterns.map(({ pattern, enabled }) => ({ pattern, enabled }));
 }
 
+function sortBySource(patterns: FilePattern[]) {
+  const user = patterns.filter((p) => p.source === 'user');
+  const rest = patterns.filter((p) => p.source !== 'user');
+  return [...user, ...rest];
+}
+
 const settingsTabs = ['general', 'file-patterns', 'ignore-patterns', 'machine'] as const;
 
 export function SettingsPage() {
@@ -111,8 +117,8 @@ export function SettingsPage() {
           api.ignorePatterns.get(),
         ]);
         setSettings(settingsData.settings);
-        setPatterns(patternsData.patterns);
-        setIgnorePatterns(ignorePatternsData.patterns);
+        setPatterns(sortBySource(patternsData.patterns));
+        setIgnorePatterns(sortBySource(ignorePatternsData.patterns));
         snapshotSettings(settingsData.settings);
         snapshotPatterns(patternsData.patterns);
         snapshotIgnorePatterns(ignorePatternsData.patterns);
@@ -169,7 +175,11 @@ export function SettingsPage() {
 
   const handleAddPattern = () => {
     if (!newPattern.trim()) return;
-    setPatterns([...patterns, { pattern: newPattern.trim(), enabled: true }]);
+    const firstDefaultIndex = patterns.findIndex((p) => p.source !== 'user');
+    const insertAt = firstDefaultIndex === -1 ? patterns.length : firstDefaultIndex;
+    const updated = [...patterns];
+    updated.splice(insertAt, 0, { pattern: newPattern.trim(), enabled: true, source: 'user' });
+    setPatterns(updated);
     setNewPattern('');
   };
 
@@ -221,7 +231,15 @@ export function SettingsPage() {
 
   const handleAddIgnorePattern = () => {
     if (!newIgnorePattern.trim()) return;
-    setIgnorePatterns([...ignorePatterns, { pattern: newIgnorePattern.trim(), enabled: true }]);
+    const firstDefaultIndex = ignorePatterns.findIndex((p) => p.source !== 'user');
+    const insertAt = firstDefaultIndex === -1 ? ignorePatterns.length : firstDefaultIndex;
+    const updated = [...ignorePatterns];
+    updated.splice(insertAt, 0, {
+      pattern: newIgnorePattern.trim(),
+      enabled: true,
+      source: 'user',
+    });
+    setIgnorePatterns(updated);
     setNewIgnorePattern('');
   };
 

@@ -9,7 +9,7 @@ import { Plus, Search, X } from 'lucide-react';
 export interface PatternItem {
   pattern: string;
   enabled: boolean;
-  source?: 'global' | 'local' | 'default' | 'custom';
+  source?: 'global' | 'local' | 'default' | 'custom' | 'user';
 }
 
 interface PatternListProps {
@@ -102,12 +102,14 @@ export function PatternList({
       )}
       <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto bg-accent/20 border-border border rounded-md p-2">
         {filtered.map((p, fi) => {
-          const canRemove = !p.source || p.source === 'local' || p.source === 'custom';
+          const canRemove =
+            !p.source || p.source === 'local' || p.source === 'custom' || p.source === 'user';
           const prevSource = fi > 0 ? filtered[fi - 1].source : undefined;
           const showSeparator =
             !query &&
             ((p.source === 'global' && prevSource === 'local') ||
-              (p.source === 'default' && prevSource === 'custom'));
+              (p.source === 'default' && prevSource === 'custom') ||
+              (p.source === 'default' && prevSource === 'user'));
           return (
             <div key={`${p.pattern}-${p.originalIndex}`}>
               {showSeparator && <div className="border-t border-border my-1.5" />}
@@ -145,7 +147,11 @@ export function PatternList({
   );
 }
 
-export function SourceBadge({ source }: { source: 'global' | 'local' | 'default' | 'custom' }) {
+export function SourceBadge({
+  source,
+}: {
+  source: 'global' | 'local' | 'default' | 'custom' | 'user';
+}) {
   const isSecondary = source === 'global' || source === 'default';
   return (
     <Badge
