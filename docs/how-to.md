@@ -32,6 +32,8 @@ DATA_DIR=/path/to/data pnpm start
 
 Then open [http://localhost:2703](http://localhost:2703) in your browser.
 
+On startup, the server automatically creates a SQLite database at `<data-dir>/.db/ai-sync.db` if it doesn't already exist. This database stores all app state — repos, tracked files, sync logs, settings, and conflict records. The `.db/` directory is git-ignored, so the database stays local to each machine.
+
 ## First-Run Setup
 
 On your first launch, the app will show a setup screen:
@@ -128,6 +130,16 @@ The **Settings** page has four tabs:
 ### Per-Repository Settings
 
 Click the **gear icon** on any repo card to override global settings for that specific repository. Each item shows a `global` or `local` badge — local overrides take precedence, and unmodified settings automatically follow global changes.
+
+### Quick Ignore from File Tree
+
+You can also add ignore patterns directly from the file tree without opening Settings:
+
+1. **Right-click** a file or folder in the tree sidebar.
+2. Select **Ignore this file** or **Ignore this folder**.
+3. The pattern is saved as a **local** override for that specific repo or service — it won't affect other repos.
+
+These patterns are persisted in the local SQLite database (`<data-dir>/.db/ai-sync.db`) — not in any config file. Specifically, repo patterns go into the `repo_settings` table and service patterns go into `service_settings`.
 
 ## Pushing Changes to Remote
 

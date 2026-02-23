@@ -10,10 +10,11 @@ Modern development involves using multiple AI coding assistants — Claude Code,
 - `.cursor/` directory for Cursor
 - `GEMINI.md` for Gemini
 - `.github/copilot-instructions.md` for GitHub Copilot
+- `.agents/**` for Agents and many more...
 
 These files:
 
-- **Should not be committed** to the repository (they're personal/local preferences)
+- **Should not be committed** to the repository (they're personal/local preferences) or you just want to keep them private.
 - **Need to be maintained** across dozens of repositories
 - **Are tedious** to manage manually
 - **Get lost** when re-cloning repositories on a new machine
@@ -69,6 +70,27 @@ AI Sync handles this with:
 - **Auto-linking** — On startup, if the store contains repos with known paths for the current machine, they are automatically registered in the local database and start syncing
 - **Unlinked repos** — The dashboard shows store repos that exist but aren't linked on the current machine, with options to link manually, auto-link, or delete from the store
 - **Machine settings** — View and edit the machine name, see the machine ID, and list all known machines in the Settings page
+
+## Local Database
+
+AI Sync uses a **SQLite database** (`<data-dir>/.db/ai-sync.db`) to track all runtime state on each machine. The database is **not synced** between machines — it is git-ignored (`.db/` in the store's `.gitignore`) because its contents are machine-specific.
+
+What the database stores:
+
+| Table              | Purpose                                                                |
+| ------------------ | ---------------------------------------------------------------------- |
+| `repos`            | Registered repositories with local paths (different per machine)       |
+| `service_configs`  | Registered AI service configs with local paths                         |
+| `tracked_files`    | Every synced file with checksums, mtimes, and sync status              |
+| `conflicts`        | Pending conflicts with store/target/base/merged content for resolution |
+| `file_patterns`    | Glob patterns that detect AI config files                              |
+| `ignore_patterns`  | Glob patterns to exclude files from sync                               |
+| `settings`         | App configuration (sync interval, auto-commit, etc.)                   |
+| `repo_settings`    | Per-repo overrides for patterns and ignore rules                       |
+| `service_settings` | Per-service overrides for patterns and ignore rules                    |
+| `sync_log`         | Event history for debugging (auto-pruned after 30 days)                |
+
+The database is created automatically on first startup and rebuilt from the store files if deleted. The actual AI config files live in the git-tracked store — the database is just an index of local state, checksums, and settings.
 
 ## Architecture Overview
 
@@ -135,8 +157,13 @@ Custom patterns can be added via the Settings page.
 
 In addition to per-repository AI config files, AI Sync can sync local AI service configurations. These are global settings directories that live outside of any git repository.
 
-| Service     | Local Path   | Synced Patterns                                                          |
-| ----------- | ------------ | ------------------------------------------------------------------------ |
-| Claude Code | `~/.claude/` | `commands/**`, `projects/**`, `CLAUDE.md`, `settings.json`, `scripts/**` |
+| Service     | Local Path            | Synced Patterns                                                                                          |
+| ----------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
+| Claude Code | `~/.claude/`          | `CLAUDE.md`, `commands/**`, `plugins/installed_plugins.json`, `scripts/**`, `settings.json`, `skills/**` |
+| Gemini      | `~/.gemini/`          | `GEMINI.md`, `settings.json`, `skills/**`                                                                |
+| Agents      | `~/.agents/`          | `skills/**`                                                                                              |
+| OpenCode    | `~/.config/opencode/` | `skills/**`                                                                                              |
+| Cursor      | `~/.cursor/`          | `mcp.json`, `skills/**`                                                                                  |
+| Codex       | `~/.codex/`           | `skills/**`                                                                                              |
 
 Service configs are stored separately in the data directory under `services/<service-type>/` and use their own predefined file patterns (not the global AI File Patterns from Settings). Gitignore management is skipped since these directories are not git repositories.
