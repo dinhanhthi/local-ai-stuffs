@@ -27,7 +27,7 @@ import {
   getRepoIgnorePatterns,
   expandIgnorePatterns,
 } from '../db/index.js';
-import { getDirectorySize, getFileSizes } from '../services/size-calculator.js';
+import { getFileSizes } from '../services/size-calculator.js';
 
 export function registerRepoRoutes(app: FastifyInstance, state: AppState): void {
   // List all repos with sync summary
@@ -55,7 +55,15 @@ export function registerRepoRoutes(app: FastifyInstance, state: AppState): void 
         const repo = mapRow<Repo>(row);
         const storeName = repo.storePath.replace(/^repos\//, '');
         const storeDir = path.join(config.storeReposPath, storeName);
-        const totalStoreSize = await getDirectorySize(storeDir);
+
+        // Calculate size from tracked files only (respects ignore patterns)
+        const trackedPaths = (
+          db.prepare('SELECT relative_path FROM tracked_files WHERE repo_id = ?').all(repo.id) as {
+            relative_path: string;
+          }[]
+        ).map((r) => r.relative_path);
+        const fileSizes = await getFileSizes(storeDir, trackedPaths);
+        const totalStoreSize = [...fileSizes.values()].reduce((sum, s) => sum + s, 0);
 
         return {
           ...repo,

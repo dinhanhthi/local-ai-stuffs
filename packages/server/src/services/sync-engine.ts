@@ -35,7 +35,7 @@ import { scanServiceFiles } from './service-scanner.js';
 import { getServiceDefinition } from './service-definitions.js';
 import type { TrackedFile, Repo, ServiceConfig, SyncTarget, WsEvent } from '../types/index.js';
 import { mapRow, mapRows } from '../db/index.js';
-import { getDirectorySize, getSyncBlockThreshold } from './size-calculator.js';
+import { getFileSizes, getSyncBlockThreshold } from './size-calculator.js';
 
 function repoToSyncTarget(repo: Repo): SyncTarget {
   return {
@@ -88,6 +88,7 @@ export class SyncEngine {
   private wsClients: Set<{ send: (data: string) => void }> = new Set();
   private ignoreMatcherCache = new Map<string, picomatch.Matcher>();
   private lastLogCleanup = 0;
+  private sizeBlockLoggedAt = new Map<string, number>();
 
   constructor(db: Database.Database) {
     this.db = db;
@@ -1091,16 +1092,29 @@ export class SyncEngine {
     const repo = mapRow<Repo>(this.db.prepare('SELECT * FROM repos WHERE id = ?').get(repoId));
     if (!repo) throw new Error(`Repo not found: ${repoId}`);
 
-    // Block sync if store size exceeds threshold
+    const target = repoToSyncTarget(repo);
+    const trackedFiles = mapRows<TrackedFile>(
+      this.db.prepare('SELECT * FROM tracked_files WHERE repo_id = ?').all(repoId),
+    );
+
+    // Block sync if tracked files size exceeds threshold
     const blockThreshold = getSyncBlockThreshold(this.db);
     const storeDir = path.join(config.storeReposPath, repo.storePath.replace(/^repos\//, ''));
-    const totalSize = await getDirectorySize(storeDir);
+    const fileSizes = await getFileSizes(
+      storeDir,
+      trackedFiles.map((f) => f.relativePath),
+    );
+    const totalSize = [...fileSizes.values()].reduce((sum, s) => sum + s, 0);
     if (totalSize > blockThreshold) {
       const sizeMB = (totalSize / (1024 * 1024)).toFixed(1);
       const limitMB = (blockThreshold / (1024 * 1024)).toFixed(0);
-      console.warn(
-        `Sync blocked for repo ${repo.name}: store size ${sizeMB} MB exceeds ${limitMB} MB`,
-      );
+      const lastLogged = this.sizeBlockLoggedAt.get(repo.id) ?? 0;
+      if (Date.now() - lastLogged > 300_000) {
+        console.warn(
+          `Sync blocked for repo ${repo.name}: store size ${sizeMB} MB exceeds ${limitMB} MB`,
+        );
+        this.sizeBlockLoggedAt.set(repo.id, Date.now());
+      }
       this.broadcast({
         type: 'sync_blocked',
         repoId: repo.id,
@@ -1109,11 +1123,6 @@ export class SyncEngine {
       });
       return { synced: 0, conflicts: 0, errors: 0 };
     }
-
-    const target = repoToSyncTarget(repo);
-    const trackedFiles = mapRows<TrackedFile>(
-      this.db.prepare('SELECT * FROM tracked_files WHERE repo_id = ?').all(repoId),
-    );
 
     let synced = 0;
     let conflicts = 0;
@@ -1160,16 +1169,29 @@ export class SyncEngine {
     );
     if (!svc) throw new Error(`Service config not found: ${serviceId}`);
 
-    // Block sync if store size exceeds threshold
+    const target = serviceToSyncTarget(svc);
+    const trackedFiles = mapRows<TrackedFile>(
+      this.db.prepare('SELECT * FROM tracked_files WHERE service_config_id = ?').all(serviceId),
+    );
+
+    // Block sync if tracked files size exceeds threshold
     const blockThreshold = getSyncBlockThreshold(this.db);
     const storeDir = path.join(config.storeServicesPath, svc.storePath.replace(/^services\//, ''));
-    const totalSize = await getDirectorySize(storeDir);
+    const fileSizes = await getFileSizes(
+      storeDir,
+      trackedFiles.map((f) => f.relativePath),
+    );
+    const totalSize = [...fileSizes.values()].reduce((sum, s) => sum + s, 0);
     if (totalSize > blockThreshold) {
       const sizeMB = (totalSize / (1024 * 1024)).toFixed(1);
       const limitMB = (blockThreshold / (1024 * 1024)).toFixed(0);
-      console.warn(
-        `Sync blocked for service ${svc.name}: store size ${sizeMB} MB exceeds ${limitMB} MB`,
-      );
+      const lastLogged = this.sizeBlockLoggedAt.get(svc.id) ?? 0;
+      if (Date.now() - lastLogged > 300_000) {
+        console.warn(
+          `Sync blocked for service ${svc.name}: store size ${sizeMB} MB exceeds ${limitMB} MB`,
+        );
+        this.sizeBlockLoggedAt.set(svc.id, Date.now());
+      }
       this.broadcast({
         type: 'sync_blocked',
         serviceId: svc.id,
@@ -1178,11 +1200,6 @@ export class SyncEngine {
       });
       return { synced: 0, conflicts: 0, errors: 0 };
     }
-
-    const target = serviceToSyncTarget(svc);
-    const trackedFiles = mapRows<TrackedFile>(
-      this.db.prepare('SELECT * FROM tracked_files WHERE service_config_id = ?').all(serviceId),
-    );
 
     let synced = 0;
     let conflicts = 0;
