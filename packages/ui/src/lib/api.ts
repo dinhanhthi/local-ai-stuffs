@@ -168,6 +168,8 @@ export interface UnlinkedStoreService {
   otherMachines: { machineId: string; machineName: string; localPath: string }[];
   suggestedPath: string | null;
   pathExists: boolean;
+  defaultPath: string | null;
+  serviceName: string | null;
 }
 
 export interface MachineInfo {
@@ -470,6 +472,19 @@ export const api = {
       request<{ results: AutoLinkResult[] }>('/machines/auto-link', { method: 'POST' }),
     deleteUnlinkedRepo: (storePath: string) =>
       request<{ success: boolean }>('/machines/unlinked-repo', {
+        method: 'DELETE',
+        body: JSON.stringify({ storePath }),
+      }),
+    linkService: (data: { storePath: string; localPath: string }) =>
+      request<{ serviceId: string; storePath: string; localPath: string }>(
+        '/machines/link-service',
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        },
+      ),
+    deleteUnlinkedService: (storePath: string) =>
+      request<{ success: boolean }>('/machines/unlinked-service', {
         method: 'DELETE',
         body: JSON.stringify({ storePath }),
       }),

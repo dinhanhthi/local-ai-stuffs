@@ -18,6 +18,8 @@ import { fileChecksum, symlinkChecksum } from './checksum.js';
 import { getFileMtime, getSymlinkMtime, fileExists, symlinkExists } from './repo-scanner.js';
 import { setupGitignore } from './gitignore-manager.js';
 import { getRepoEnabledFilePatterns } from '../db/index.js';
+import { getServiceDefinition, registerCustomDefinition } from './service-definitions.js';
+import { scanServiceFiles } from './service-scanner.js';
 
 const MACHINES_FILE = 'machines.json';
 
@@ -247,6 +249,7 @@ export async function getUnlinkedStoreServices(
       }
     }
 
+    const definition = getServiceDefinition(entry);
     unlinked.push({
       storePath,
       storeName: entry,
@@ -254,6 +257,8 @@ export async function getUnlinkedStoreServices(
       otherMachines,
       suggestedPath,
       pathExists,
+      defaultPath: definition?.defaultPath ?? null,
+      serviceName: definition?.name ?? null,
     });
   }
 
@@ -455,6 +460,282 @@ export async function linkStoreRepo(
   setRepoMapping(storePath, localPath);
 
   return repoId;
+}
+
+interface ServiceMeta {
+  name: string;
+  patterns: string[];
+  description?: string;
+}
+
+interface ServicesJsonFile {
+  [serviceType: string]: ServiceMeta;
+}
+
+function getServicesJsonPath(): string {
+  return path.join(config.storeServicesPath, 'services.json');
+}
+
+function readServicesJson(): ServicesJsonFile {
+  try {
+    const raw = fs.readFileSync(getServicesJsonPath(), 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function writeServicesJson(data: ServicesJsonFile): void {
+  const sorted: ServicesJsonFile = {};
+  for (const key of Object.keys(data).sort()) {
+    sorted[key] = data[key];
+  }
+  fs.writeFileSync(getServicesJsonPath(), JSON.stringify(sorted, null, 2) + '\n', 'utf-8');
+}
+
+/**
+ * Write metadata for a custom service to services/services.json.
+ * This allows linking the service on another machine without access to the original DB.
+ */
+export function writeServiceMeta(serviceType: string, meta: ServiceMeta): void {
+  const data = readServicesJson();
+  data[serviceType] = meta;
+  writeServicesJson(data);
+}
+
+/**
+ * Read metadata for a custom service from services/services.json.
+ */
+function readServiceMeta(serviceType: string): ServiceMeta | null {
+  const data = readServicesJson();
+  return data[serviceType] ?? null;
+}
+
+/**
+ * Remove metadata for a service from services/services.json.
+ */
+export function removeServiceMeta(serviceType: string): void {
+  const data = readServicesJson();
+  if (serviceType in data) {
+    delete data[serviceType];
+    writeServicesJson(data);
+  }
+}
+
+/**
+ * Link an existing store service to a local path on this machine.
+ * Similar to POST /api/services but reuses existing store files.
+ */
+export async function linkStoreService(
+  db: Database.Database,
+  storePath: string,
+  localPath: string,
+): Promise<string> {
+  const serviceType = storePath.replace(/^services\//, '');
+  const storeDir = path.join(config.storeServicesPath, serviceType);
+
+  // Look up definition (built-in or custom via metadata)
+  let definition = getServiceDefinition(serviceType);
+  let customPatterns: string[] | null = null;
+
+  if (!definition) {
+    // Custom service — read metadata from services.json
+    const meta = readServiceMeta(serviceType);
+    if (!meta) {
+      throw new Error(
+        `Unknown service type "${serviceType}" and no metadata found in services.json`,
+      );
+    }
+    customPatterns = meta.patterns;
+    registerCustomDefinition({
+      serviceType,
+      name: meta.name,
+      defaultPath: localPath,
+      patterns: meta.patterns,
+    });
+    definition = getServiceDefinition(serviceType)!;
+  }
+
+  const serviceName = definition.name;
+  const serviceId = uuid();
+
+  // Get patterns to scan with
+  const patterns = customPatterns ?? definition.patterns;
+
+  // Check for custom service icon in store
+  let iconPath: string | null = null;
+  try {
+    const storeEntries = await fsPromises.readdir(storeDir);
+    const iconFile = storeEntries.find((f) => f.startsWith('icon.'));
+    if (iconFile) iconPath = iconFile;
+  } catch {
+    // No icon
+  }
+
+  // Read description from metadata if available
+  const meta = readServiceMeta(serviceType);
+  const description = meta?.description ?? '';
+
+  // Register the service config in DB
+  db.prepare(
+    'INSERT INTO service_configs (id, service_type, name, description, local_path, store_path, icon_path, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(serviceId, serviceType, serviceName, description, localPath, storePath, iconPath, 'active');
+
+  // If custom, store patterns in service_settings
+  if (customPatterns) {
+    const insertSetting = db.prepare(
+      'INSERT INTO service_settings (id, service_config_id, key, value) VALUES (?, ?, ?, ?)',
+    );
+    for (const p of customPatterns) {
+      insertSetting.run(uuid(), serviceId, `service_pattern_custom:${p}`, 'enabled');
+    }
+  }
+
+  // Scan for files matching service patterns in the local directory
+  const foundEntries = await scanServiceFiles(localPath, patterns);
+
+  // Track and sync found files
+  for (const entry of foundEntries) {
+    const fileId = uuid();
+    const targetPath = path.join(localPath, entry.path);
+    const storeFilePath = path.join(storeDir, entry.path);
+    const fileType = entry.isSymlink ? 'symlink' : 'file';
+
+    if (entry.isSymlink) {
+      const targetSymExists = await symlinkExists(targetPath);
+      const storeSymExists = await symlinkExists(storeFilePath);
+
+      let checksum: string | null = null;
+      if (targetSymExists && !storeSymExists) {
+        const linkTarget = await fsPromises.readlink(targetPath);
+        await ensureDir(path.dirname(storeFilePath));
+        await fsPromises.symlink(linkTarget, storeFilePath);
+        checksum = await symlinkChecksum(targetPath);
+      } else if (!targetSymExists && storeSymExists) {
+        const linkTarget = await fsPromises.readlink(storeFilePath);
+        await ensureDir(path.dirname(targetPath));
+        await fsPromises.symlink(linkTarget, targetPath);
+        checksum = await symlinkChecksum(storeFilePath);
+      } else if (targetSymExists) {
+        checksum = await symlinkChecksum(targetPath);
+      }
+
+      const mtime = (await getSymlinkMtime(targetPath)) || new Date().toISOString();
+      db.prepare(
+        `INSERT INTO tracked_files (id, service_config_id, relative_path, file_type, store_checksum, target_checksum, store_mtime, target_mtime, sync_status, last_synced_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced', datetime('now'))`,
+      ).run(fileId, serviceId, entry.path, fileType, checksum, checksum, mtime, mtime);
+    } else {
+      const targetExists = await fileExists(targetPath);
+      const storeFileExists = await fileExists(storeFilePath);
+
+      let storeChk: string | null = null;
+      let targetChk: string | null = null;
+      let syncStatus = 'synced';
+
+      if (targetExists) targetChk = await fileChecksum(targetPath);
+      if (storeFileExists) storeChk = await fileChecksum(storeFilePath);
+
+      if (targetExists && !storeFileExists) {
+        await ensureDir(path.dirname(storeFilePath));
+        await fsPromises.copyFile(targetPath, storeFilePath);
+        storeChk = targetChk;
+      } else if (!targetExists && storeFileExists) {
+        await ensureDir(path.dirname(targetPath));
+        await fsPromises.copyFile(storeFilePath, targetPath);
+        targetChk = storeChk;
+      } else if (targetExists && storeFileExists && storeChk !== targetChk) {
+        syncStatus = 'conflict';
+      }
+
+      const mtime = (await getFileMtime(targetPath)) || new Date().toISOString();
+      db.prepare(
+        `INSERT INTO tracked_files (id, service_config_id, relative_path, file_type, store_checksum, target_checksum, store_mtime, target_mtime, sync_status, last_synced_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      ).run(fileId, serviceId, entry.path, fileType, storeChk, targetChk, mtime, mtime, syncStatus);
+    }
+  }
+
+  // Also track store-only files (files in store but not scanned from target)
+  const storeFiles = await listStoreFiles(storeDir);
+  const foundPaths = new Set(foundEntries.map((e) => e.path));
+  for (const sf of storeFiles) {
+    if (foundPaths.has(sf)) continue;
+    if (sf.startsWith('icon.')) continue;
+    const fileId = uuid();
+    const storeFilePath = path.join(storeDir, sf);
+    const targetPath = path.join(localPath, sf);
+
+    await ensureDir(path.dirname(targetPath));
+    await fsPromises.copyFile(storeFilePath, targetPath);
+
+    const checksum = await fileChecksum(storeFilePath);
+    const mtime = (await getFileMtime(storeFilePath)) || new Date().toISOString();
+
+    db.prepare(
+      `INSERT INTO tracked_files (id, service_config_id, relative_path, file_type, store_checksum, target_checksum, store_mtime, target_mtime, sync_status, last_synced_at)
+       VALUES (?, ?, ?, 'file', ?, ?, ?, ?, 'synced', datetime('now'))`,
+    ).run(fileId, serviceId, sf, checksum, checksum, mtime, mtime);
+  }
+
+  // Update machines.json mapping
+  setServiceMapping(storePath, localPath);
+
+  return serviceId;
+}
+
+/**
+ * Auto-link store services that have mappings for the current machine.
+ * For built-in services without a suggestedPath, also tries the platform defaultPath.
+ */
+export async function autoLinkServices(db: Database.Database): Promise<AutoLinkResult[]> {
+  const unlinked = await getUnlinkedStoreServices(db);
+  const results: AutoLinkResult[] = [];
+
+  for (const item of unlinked) {
+    // Determine the path to try: suggestedPath first, then defaultPath for built-in services
+    let tryPath = item.suggestedPath;
+    let tryPathExists = item.pathExists;
+
+    if (!tryPath && item.defaultPath) {
+      tryPath = item.defaultPath;
+      try {
+        const s = await fsPromises.stat(item.defaultPath);
+        tryPathExists = s.isDirectory();
+      } catch {
+        tryPathExists = false;
+      }
+    }
+
+    if (!tryPath) continue;
+
+    if (!tryPathExists) {
+      results.push({
+        storePath: item.storePath,
+        localPath: tryPath,
+        status: 'path_missing',
+      });
+      continue;
+    }
+
+    // Check not already registered by service_type
+    const existing = db
+      .prepare('SELECT id FROM service_configs WHERE service_type = ?')
+      .get(item.serviceType);
+    if (existing) {
+      results.push({
+        storePath: item.storePath,
+        localPath: tryPath,
+        status: 'already_registered',
+      });
+      continue;
+    }
+
+    await linkStoreService(db, item.storePath, tryPath);
+    results.push({ storePath: item.storePath, localPath: tryPath, status: 'linked' });
+  }
+
+  return results;
 }
 
 async function listStoreFiles(dir: string, base = ''): Promise<string[]> {

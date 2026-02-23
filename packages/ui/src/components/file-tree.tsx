@@ -364,7 +364,9 @@ function TreeNodeView({
           )}
           {(dirSize > 0 || dirStatus) && (
             <span className={`shrink-0 flex items-center gap-1.5 ${onClone ? '' : 'ml-auto'}`}>
-              {dirSize > 0 && <SizeLabel bytes={dirSize} sizeThresholds={sizeThresholds} className="shrink-0" />}
+              {dirSize > 0 && (
+                <SizeLabel bytes={dirSize} sizeThresholds={sizeThresholds} className="shrink-0" />
+              )}
               {dirStatus && <span className="shrink-0">{folderSuffix?.(dirStatus)}</span>}
             </span>
           )}

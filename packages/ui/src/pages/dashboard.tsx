@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { RepoCard } from '@/components/repo-card';
 import { ServiceCard } from '@/components/service-card';
 import { UnlinkedRepoCard } from '@/components/unlinked-repo-card';
+import { UnlinkedServiceCard } from '@/components/unlinked-service-card';
 import { AddRepoDialog } from '@/components/add-repo-dialog';
 import { AddServiceDialog } from '@/components/add-service-dialog';
 import { useRepos } from '@/hooks/use-repos';
@@ -32,6 +33,7 @@ export function DashboardPage() {
   const { conflicts, refetch: refetchConflicts } = useConflicts();
   const {
     repos: unlinkedRepos,
+    services: unlinkedServices,
     loading: unlinkedLoading,
     refetch: refetchUnlinked,
   } = useUnlinkedRepos();
@@ -83,9 +85,9 @@ export function DashboardPage() {
       const data = await api.machines.autoLink();
       const linked = data.results.filter((r) => r.status === 'linked');
       if (linked.length > 0) {
-        toast.success(`Auto-linked ${linked.length} repo(s)`);
+        toast.success(`Auto-linked ${linked.length} item(s)`);
       } else {
-        toast.info('No repos could be auto-linked');
+        toast.info('Nothing could be auto-linked');
       }
       refetchAll();
     } catch (err) {
@@ -231,6 +233,32 @@ export function DashboardPage() {
               </div>
             )}
           </div>
+
+          {/* Unlinked store services */}
+          {!unlinkedLoading && unlinkedServices.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <h3 className="text-sm font-medium">
+                    Unlinked Services ({unlinkedServices.length})
+                  </h3>
+                  <span className="text-xs text-muted-foreground">
+                    Found in store but not linked on this machine
+                  </span>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleAutoLink} disabled={autoLinking}>
+                  <Link className="h-3.5 w-3.5" />
+                  {autoLinking ? 'Linking...' : 'Auto-link All'}
+                </Button>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {unlinkedServices.map((svc) => (
+                  <UnlinkedServiceCard key={svc.storePath} service={svc} onLinked={refetchAll} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Unlinked store repos */}
           {!unlinkedLoading && unlinkedRepos.length > 0 && (

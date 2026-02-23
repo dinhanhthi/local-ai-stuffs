@@ -8,12 +8,16 @@ import {
   getUnlinkedStoreRepos,
   getUnlinkedStoreServices,
   linkStoreRepo,
+  linkStoreService,
   autoLinkRepos,
+  autoLinkServices,
   removeRepoMapping,
+  removeServiceMapping,
+  removeServiceMeta,
 } from '../services/machines.js';
 import { commitStoreChanges } from '../services/store-git.js';
 import { mapRow } from '../db/index.js';
-import type { Repo } from '../types/index.js';
+import type { Repo, ServiceConfig } from '../types/index.js';
 import type { AppState } from '../app-state.js';
 
 export function registerMachineRoutes(app: FastifyInstance, state: AppState): void {
@@ -112,14 +116,58 @@ export function registerMachineRoutes(app: FastifyInstance, state: AppState): vo
     return reply.code(201).send({ repoId, storePath, localPath });
   });
 
-  // Auto-link all repos with valid mappings for this machine
+  // Link an existing store service to a local path
+  app.post<{
+    Body: { storePath: string; localPath: string };
+  }>('/api/machines/link-service', async (req, reply) => {
+    if (!state.db || !state.syncEngine) return reply.code(503).send({ error: 'Not configured' });
+
+    const { storePath, localPath } = req.body;
+
+    if (!storePath || !localPath) {
+      return reply.code(400).send({ error: 'storePath and localPath are required' });
+    }
+
+    // Validate local path exists
+    try {
+      const stat = await fs.stat(localPath);
+      if (!stat.isDirectory()) {
+        return reply.code(400).send({ error: 'Path is not a directory' });
+      }
+    } catch {
+      return reply.code(400).send({ error: 'Path does not exist' });
+    }
+
+    // Check if already registered by service_type
+    const serviceType = storePath.replace(/^services\//, '');
+    const existing = state.db
+      .prepare('SELECT id FROM service_configs WHERE service_type = ?')
+      .get(serviceType);
+    if (existing) {
+      return reply.code(409).send({ error: 'Service already registered' });
+    }
+
+    const serviceId = await linkStoreService(state.db, storePath, localPath);
+    await commitStoreChanges(`Link service ${serviceType} on ${config.machineName}`);
+
+    // Start watcher
+    const svc = mapRow<ServiceConfig>(
+      state.db.prepare('SELECT * FROM service_configs WHERE id = ?').get(serviceId),
+    );
+    await state.syncEngine.startWatcherForService(svc);
+
+    return reply.code(201).send({ serviceId, storePath, localPath });
+  });
+
+  // Auto-link all repos and services with valid mappings for this machine
   app.post('/api/machines/auto-link', async (_req, reply) => {
     if (!state.db || !state.syncEngine) return reply.code(503).send({ error: 'Not configured' });
 
-    const results = await autoLinkRepos(state.db);
+    const repoResults = await autoLinkRepos(state.db);
+    const serviceResults = await autoLinkServices(state.db);
 
     // Start watchers for newly linked repos
-    for (const result of results) {
+    for (const result of repoResults) {
       if (result.status === 'linked') {
         const repo = mapRow<Repo>(
           state.db.prepare('SELECT * FROM repos WHERE store_path = ?').get(result.storePath),
@@ -130,11 +178,26 @@ export function registerMachineRoutes(app: FastifyInstance, state: AppState): vo
       }
     }
 
-    if (results.some((r) => r.status === 'linked')) {
-      await commitStoreChanges(`Auto-link repos on ${config.machineName}`);
+    // Start watchers for newly linked services
+    for (const result of serviceResults) {
+      if (result.status === 'linked') {
+        const svc = mapRow<ServiceConfig>(
+          state.db
+            .prepare('SELECT * FROM service_configs WHERE store_path = ?')
+            .get(result.storePath),
+        );
+        if (svc) {
+          await state.syncEngine.startWatcherForService(svc);
+        }
+      }
     }
 
-    return { results };
+    const allResults = [...repoResults, ...serviceResults];
+    if (allResults.some((r) => r.status === 'linked')) {
+      await commitStoreChanges(`Auto-link on ${config.machineName}`);
+    }
+
+    return { results: allResults };
   });
 
   // Delete an unlinked store repo (removes store files + all machine mappings)
@@ -166,6 +229,43 @@ export function registerMachineRoutes(app: FastifyInstance, state: AppState): vo
     removeRepoMapping(storePath);
 
     await commitStoreChanges(`Delete unlinked repo: ${storePath}`);
+
+    return { success: true };
+  });
+
+  // Delete an unlinked store service (removes store files + all machine mappings)
+  app.delete<{
+    Body: { storePath: string };
+  }>('/api/machines/unlinked-service', async (req, reply) => {
+    if (!state.db) return reply.code(503).send({ error: 'Not configured' });
+
+    const { storePath } = req.body;
+    if (!storePath || typeof storePath !== 'string') {
+      return reply.code(400).send({ error: 'storePath is required' });
+    }
+
+    // Ensure this service is truly unlinked (not in DB)
+    const existing = state.db
+      .prepare('SELECT id FROM service_configs WHERE store_path = ?')
+      .get(storePath);
+    if (existing) {
+      return reply.code(409).send({ error: 'Service is linked — delete it from the dashboard' });
+    }
+
+    // Remove store directory
+    const serviceType = storePath.replace(/^services\//, '');
+    const storeDir = path.join(config.storePath, storePath);
+    try {
+      await fs.rm(storeDir, { recursive: true });
+    } catch {
+      // May not exist
+    }
+
+    // Remove metadata and machine mappings
+    removeServiceMeta(serviceType);
+    removeServiceMapping(storePath);
+
+    await commitStoreChanges(`Delete unlinked service: ${storePath}`);
 
     return { success: true };
   });

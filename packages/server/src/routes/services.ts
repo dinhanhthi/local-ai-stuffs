@@ -8,7 +8,12 @@ import { ensureDir, isSymlink, symlinkExists, fileExists } from '../services/rep
 import { fileChecksum, symlinkChecksum } from '../services/checksum.js';
 import { getFileMtime, getSymlinkMtime } from '../services/repo-scanner.js';
 import { commitStoreChanges } from '../services/store-git.js';
-import { setServiceMapping, removeServiceMapping } from '../services/machines.js';
+import {
+  setServiceMapping,
+  removeServiceMapping,
+  writeServiceMeta,
+  removeServiceMeta,
+} from '../services/machines.js';
 import {
   getServiceDefinition,
   getAllServiceDefinitions,
@@ -411,6 +416,9 @@ export function registerServiceRoutes(app: FastifyInstance, state: AppState): vo
       patterns,
     });
 
+    // Write metadata so other machines can link this custom service
+    writeServiceMeta(serviceType, { name, patterns, description: description || '' });
+
     // Scan for matching files
     const foundEntries = await scanServiceFiles(localPath, patterns);
 
@@ -570,15 +578,14 @@ export function registerServiceRoutes(app: FastifyInstance, state: AppState): vo
       await syncEngine.stopWatcherForService(svc.id);
 
       if (req.query.deleteStoreFiles === 'true') {
-        const storeDir = path.join(
-          config.storeServicesPath,
-          svc.storePath.replace(/^services\//, ''),
-        );
+        const serviceType = svc.storePath.replace(/^services\//, '');
+        const storeDir = path.join(config.storeServicesPath, serviceType);
         try {
           await fs.rm(storeDir, { recursive: true });
         } catch {
           // May not exist
         }
+        removeServiceMeta(serviceType);
         removeServiceMapping(svc.storePath);
       } else {
         removeServiceMapping(svc.storePath, config.machineId);

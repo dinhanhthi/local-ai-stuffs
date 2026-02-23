@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.0
+
+- Add cross-machine service linking: unlinked services now appear on the dashboard with Link/Delete/Auto-link actions, matching existing repo linking behavior. Store custom service metadata in single `services/services.json`
+
 ## v0.1.4
 
 - Fix size color thresholds ignoring user settings (was using hardcoded values instead of configured thresholds)

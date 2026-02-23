@@ -140,6 +140,8 @@ export interface UnlinkedStoreService {
   otherMachines: { machineId: string; machineName: string; localPath: string }[];
   suggestedPath: string | null;
   pathExists: boolean;
+  defaultPath: string | null;
+  serviceName: string | null;
 }
 
 export interface AutoLinkResult {

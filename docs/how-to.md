@@ -180,9 +180,9 @@ If your data directory is connected to a remote git repository, use the **Push c
 4. The app will automatically:
    - Assign a unique machine ID and name (based on hostname)
    - Register this machine in `machines.json`
-   - Auto-link any repos that have known paths for this machine
-5. Repos that couldn't be auto-linked will appear as **Unlinked Repositories** on the dashboard — click **Link** to map them to local paths, or **Auto-link All** if paths are already mapped from another machine
-6. To remove an unlinked repo you no longer need, click the **trash icon** on its card to delete it from the store
+   - Auto-link any repos and services that have known paths for this machine
+5. Items that couldn't be auto-linked will appear as **Unlinked Services** and **Unlinked Repositories** on the dashboard — click **Link** to map them to local paths, or **Auto-link All** if paths are already mapped from another machine
+6. To remove an unlinked item you no longer need, click the **trash icon** on its card to delete it from the store
 
 ## Multi-Machine Workflow
 
@@ -194,13 +194,18 @@ AI Sync supports using the same store across multiple machines, even when repos 
 - A **`machines.json`** file in the store repo tracks which machine has which repo at which local path
 - When you add a repo on Machine A, the path mapping is saved in `machines.json`. When Machine B pulls the store, it can use that mapping to auto-link or manually link the repo
 
-### Managing Unlinked Repos
+### Managing Unlinked Items
 
-When the store contains repos that aren't linked on the current machine, they appear in the **Unlinked Repositories** section on the dashboard:
+When the store contains repos or services that aren't linked on the current machine, they appear in the **Unlinked Services** and **Unlinked Repositories** sections on the dashboard:
 
-- **Auto-link All** — Automatically link all repos that have a valid path mapping for this machine
-- **Link** — Manually specify the local path for a specific repo
-- **Delete** — Remove the repo from the store entirely (trash icon on each card)
+- **Auto-link All** — Automatically link all items that have a valid path mapping for this machine. For built-in services (Claude Code, Gemini, etc.), auto-link also tries the platform default path (e.g., `~/.claude/`) when no explicit mapping exists
+- **Link** — Manually specify the local path for a specific repo or service. For services, the dialog pre-fills the path from the previously recorded path or the platform default
+- **Delete** — Remove the item from the store entirely (trash icon on each card)
+
+Services work slightly differently from repos during linking:
+
+- Built-in services (Claude Code, Gemini, Cursor, etc.) have a known default path per platform — the link dialog pre-fills this path automatically
+- Custom services store their metadata (name, patterns) in `services/services.json` in the store, so they can be linked on another machine without reconfiguring patterns
 
 ### Machine Settings
 
