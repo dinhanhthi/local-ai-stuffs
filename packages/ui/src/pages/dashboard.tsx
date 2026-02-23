@@ -175,10 +175,6 @@ export function DashboardPage() {
                 <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
                 <span className="">Sync All</span>
               </Button>
-              <Button size="sm" onClick={() => setAddOpen(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                <span className="">Add Repo</span>
-              </Button>
             </div>
           </TooltipProvider>
         </div>
@@ -200,7 +196,7 @@ export function DashboardPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Terminal className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-medium">AI Services</h3>
+                <h3 className="text-base font-medium">AI Services</h3>
               </div>
               <Button variant="outline" size="sm" onClick={() => setAddServiceOpen(true)}>
                 <Plus className="h-3.5 w-3.5" />
@@ -263,6 +259,16 @@ export function DashboardPage() {
           )}
 
           {/* Repositories section */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FolderGit2 className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-base font-medium">Repositories</h3>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              Add Repo
+            </Button>
+          </div>
           {loading ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
               Loading repositories...
@@ -276,10 +282,6 @@ export function DashboardPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Get started by adding your first repository.
               </p>
-              <Button size="sm" onClick={() => setAddOpen(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                Add Repository
-              </Button>
             </div>
           ) : filteredRepos.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
