@@ -559,20 +559,6 @@ export function registerRepoRoutes(app: FastifyInstance, state: AppState): void 
       }
     }
 
-    // Sync .gitignore if file patterns changed
-    if (req.body.filePatterns) {
-      const repoRow = mapRow<Repo>(db.prepare('SELECT * FROM repos WHERE id = ?').get(repoId));
-      if (repoRow && repoRow.status === 'active') {
-        const trackedPaths = (
-          db.prepare('SELECT relative_path FROM tracked_files WHERE repo_id = ?').all(repoId) as {
-            relative_path: string;
-          }[]
-        ).map((r) => r.relative_path);
-        const enabledPatterns = getRepoEnabledFilePatterns(db, repoId);
-        await setupGitignore(repoRow.localPath, trackedPaths, enabledPatterns);
-      }
-    }
-
     // Handle ignore pattern overrides
     if (req.body.ignorePatterns) {
       db.prepare("DELETE FROM repo_settings WHERE repo_id = ? AND key LIKE 'ignore_pattern_%'").run(

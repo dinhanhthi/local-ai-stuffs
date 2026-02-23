@@ -39,6 +39,7 @@ export function RepoSettingsDialog({
   const [newIgnorePattern, setNewIgnorePattern] = useState('');
   const [applyingGitignore, setApplyingGitignore] = useState(false);
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
+  const [showApplyAfterSave, setShowApplyAfterSave] = useState(false);
   const globalSettingsRef = useRef<Record<string, string>>({});
 
   const fetchSettings = useCallback(async () => {
@@ -80,6 +81,7 @@ export function RepoSettingsDialog({
         ignorePatterns,
       });
       toast.success('Repository settings saved');
+      setShowApplyAfterSave(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -273,30 +275,6 @@ export function RepoSettingsDialog({
                         onReset={() => resetSetting('auto_commit_store')}
                       />
                     </div>
-
-                    <div className="py-4 border-t">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-medium">Apply .gitignore</p>
-                          <p className="text-xs text-muted-foreground">
-                            Re-apply managed .gitignore block and untrack files from git
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowApplyConfirm(true)}
-                          disabled={applyingGitignore}
-                        >
-                          {applyingGitignore ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                          )}
-                          Apply
-                        </Button>
-                      </div>
-                    </div>
                   </div>
                 </TabsContent>
 
@@ -317,6 +295,29 @@ export function RepoSettingsDialog({
                     onAdd={addFilePattern}
                     placeholder=".new-tool/**"
                   />
+                  <div className="pt-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          Add these patterns to the target repo's .gitignore and untrack matching
+                          files from git overthere.
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowApplyConfirm(true)}
+                        disabled={applyingGitignore}
+                      >
+                        {applyingGitignore ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                        )}
+                        Apply to repo
+                      </Button>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent
@@ -361,9 +362,18 @@ export function RepoSettingsDialog({
         open={showApplyConfirm}
         onOpenChange={setShowApplyConfirm}
         onConfirm={handleApplyGitignore}
-        title="Apply .gitignore"
-        description="This will update the .gitignore file in the target repository and untrack any AI config files from git. Existing .gitignore entries outside the managed block will not be affected."
-        confirmLabel="Apply"
+        title="Update target .gitignore file"
+        description="This will update the .gitignore file in the target repository to include these AI file patterns, and untrack any matching files from git. Local pattern overrides will be respected. Existing .gitignore entries outside the managed block will not be affected."
+        confirmLabel="Apply to repo"
+      />
+
+      <ConfirmDialog
+        open={showApplyAfterSave}
+        onOpenChange={setShowApplyAfterSave}
+        onConfirm={handleApplyGitignore}
+        title="Update target .gitignore file?"
+        description="Settings have been saved. Would you like to update the .gitignore file in the target repository to reflect the new patterns?"
+        confirmLabel="Apply to repo"
       />
     </Dialog>
   );

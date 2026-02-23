@@ -11,6 +11,8 @@
 - Reorganize Clean button in Ignore Patterns tab with 3-action dialog (target only, store only, both)
 - Add scope parameter to ignore pattern clean API for selective file removal
 - Clarify documentation on Ignore Patterns vs AI File Patterns functionality
+- Stop auto-applying .gitignore when saving file patterns — prompt user to confirm instead
+- Apply same "Apply to repo" button and post-save prompt to per-repo settings dialog
 
 ## v0.1.3
 

@@ -218,20 +218,6 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
         insert.run(p.id || uuid(), p.pattern, p.enabled ? 1 : 0);
       }
 
-      // Sync .gitignore for all active repos with the updated patterns
-      const activeRepos = mapRows<Repo>(
-        db.prepare("SELECT * FROM repos WHERE status = 'active'").all(),
-      );
-      for (const repo of activeRepos) {
-        const trackedPaths = (
-          db.prepare('SELECT relative_path FROM tracked_files WHERE repo_id = ?').all(repo.id) as {
-            relative_path: string;
-          }[]
-        ).map((r) => r.relative_path);
-        const enabledPatterns = getRepoEnabledFilePatterns(db, repo.id);
-        await setupGitignore(repo.localPath, trackedPaths, enabledPatterns);
-      }
-
       return { success: true };
     },
   );
