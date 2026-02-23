@@ -107,59 +107,67 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
   );
 
   // Remove tracked files matching ignore patterns
-  app.post('/api/ignore-patterns/clean', async (_req, reply) => {
-    if (!state.db) return reply.code(503).send({ error: 'Not configured' });
-    const db = state.db;
+  // scope: 'both' (default) | 'target' | 'store'
+  app.post<{ Querystring: { scope?: string } }>(
+    '/api/ignore-patterns/clean',
+    async (req, reply) => {
+      if (!state.db) return reply.code(503).send({ error: 'Not configured' });
+      const db = state.db;
+      const scope = (req.query.scope as 'both' | 'target' | 'store') || 'both';
 
-    const ignorePatterns = expandIgnorePatterns(getIgnorePatterns(db));
-    if (ignorePatterns.length === 0) {
-      return { success: true, removed: 0, files: [] };
-    }
-
-    const matcher = picomatch(ignorePatterns, { dot: true });
-
-    const repos = mapRows<Repo>(db.prepare('SELECT * FROM repos').all());
-    const allTracked = mapRows<TrackedFile>(db.prepare('SELECT * FROM tracked_files').all());
-
-    const removedFiles: string[] = [];
-
-    for (const file of allTracked) {
-      if (!matcher(file.relativePath)) continue;
-
-      const repo = repos.find((r) => r.id === file.repoId);
-      if (!repo) continue;
-
-      const storeName = repo.storePath.replace(/^repos\//, '');
-      const storeFilePath = path.join(config.storeReposPath, storeName, file.relativePath);
-      const targetFilePath = path.join(repo.localPath, file.relativePath);
-
-      // Delete from both locations
-      try {
-        await fs.unlink(storeFilePath);
-      } catch {
-        // May not exist
-      }
-      try {
-        await fs.unlink(targetFilePath);
-      } catch {
-        // May not exist
+      const ignorePatterns = expandIgnorePatterns(getIgnorePatterns(db));
+      if (ignorePatterns.length === 0) {
+        return { success: true, removed: 0, files: [] };
       }
 
-      // Remove related conflicts
-      db.prepare('DELETE FROM conflicts WHERE tracked_file_id = ?').run(file.id);
+      const matcher = picomatch(ignorePatterns, { dot: true });
 
-      // Remove tracking
-      db.prepare('DELETE FROM tracked_files WHERE id = ?').run(file.id);
+      const repos = mapRows<Repo>(db.prepare('SELECT * FROM repos').all());
+      const allTracked = mapRows<TrackedFile>(db.prepare('SELECT * FROM tracked_files').all());
 
-      removedFiles.push(`${repo.name}/${file.relativePath}`);
-    }
+      const removedFiles: string[] = [];
 
-    if (removedFiles.length > 0) {
-      await commitStoreChanges(`Clean ${removedFiles.length} ignored file(s)`);
-    }
+      for (const file of allTracked) {
+        if (!matcher(file.relativePath)) continue;
 
-    return { success: true, removed: removedFiles.length, files: removedFiles };
-  });
+        const repo = repos.find((r) => r.id === file.repoId);
+        if (!repo) continue;
+
+        const storeName = repo.storePath.replace(/^repos\//, '');
+        const storeFilePath = path.join(config.storeReposPath, storeName, file.relativePath);
+        const targetFilePath = path.join(repo.localPath, file.relativePath);
+
+        if (scope === 'both' || scope === 'store') {
+          try {
+            await fs.unlink(storeFilePath);
+          } catch {
+            // May not exist
+          }
+        }
+        if (scope === 'both' || scope === 'target') {
+          try {
+            await fs.unlink(targetFilePath);
+          } catch {
+            // May not exist
+          }
+        }
+
+        // Remove related conflicts
+        db.prepare('DELETE FROM conflicts WHERE tracked_file_id = ?').run(file.id);
+
+        // Remove tracking
+        db.prepare('DELETE FROM tracked_files WHERE id = ?').run(file.id);
+
+        removedFiles.push(`${repo.name}/${file.relativePath}`);
+      }
+
+      if (removedFiles.length > 0 && (scope === 'both' || scope === 'store')) {
+        await commitStoreChanges(`Clean ${removedFiles.length} ignored file(s)`);
+      }
+
+      return { success: true, removed: removedFiles.length, files: removedFiles };
+    },
+  );
 
   // Apply .gitignore to all active repos
   app.post('/api/apply-gitignore', async (_req, reply) => {

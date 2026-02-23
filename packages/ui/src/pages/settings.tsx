@@ -1,3 +1,12 @@
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { PatternList } from '@/components/pattern-list';
 import { Button } from '@/components/ui/button';
@@ -56,6 +65,8 @@ export function SettingsPage() {
   const [showCleanConfirm, setShowCleanConfirm] = useState(false);
   const [applyingGitignore, setApplyingGitignore] = useState(false);
   const [showApplyGitignoreConfirm, setShowApplyGitignoreConfirm] = useState(false);
+  const [showApplyAfterPatternsSave, setShowApplyAfterPatternsSave] = useState(false);
+  const [showCleanAfterIgnoreSave, setShowCleanAfterIgnoreSave] = useState(false);
 
   const { machineName, machineId, updateName } = useMachine();
   const [editingName, setEditingName] = useState('');
@@ -127,6 +138,7 @@ export function SettingsPage() {
     try {
       await api.patterns.update(patterns);
       snapshotPatterns(patterns);
+      setShowApplyAfterPatternsSave(true);
     } finally {
       setSavingPatterns(false);
     }
@@ -137,6 +149,7 @@ export function SettingsPage() {
     try {
       await api.ignorePatterns.update(ignorePatterns);
       snapshotIgnorePatterns(ignorePatterns);
+      setShowCleanAfterIgnoreSave(true);
     } finally {
       setSavingIgnorePatterns(false);
     }
@@ -168,12 +181,16 @@ export function SettingsPage() {
     setPatterns(patterns.map((p, i) => (i === index ? { ...p, enabled: !p.enabled } : p)));
   };
 
-  const handleCleanIgnored = async () => {
+  const handleCleanIgnored = async (scope: 'both' | 'target' | 'store' = 'both') => {
     setCleaningIgnored(true);
     try {
-      const result = await api.ignorePatterns.clean();
+      const result = await api.ignorePatterns.clean(scope);
       if (result.removed > 0) {
-        toast.success(`Removed ${result.removed} ignored file${result.removed > 1 ? 's' : ''}`);
+        const where =
+          scope === 'both' ? 'both locations' : scope === 'target' ? 'target repos' : 'store';
+        toast.success(
+          `Removed ${result.removed} ignored file${result.removed > 1 ? 's' : ''} from ${where}`,
+        );
       } else {
         toast.info('No tracked files match the ignore patterns');
       }
@@ -182,6 +199,7 @@ export function SettingsPage() {
     } finally {
       setCleaningIgnored(false);
       setShowCleanConfirm(false);
+      setShowCleanAfterIgnoreSave(false);
     }
   };
 
@@ -343,31 +361,6 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Apply .gitignore</p>
-                    <p className="text-xs text-muted-foreground">
-                      Re-apply managed .gitignore block and untrack files from git for all active
-                      repos
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowApplyGitignoreConfirm(true)}
-                    disabled={applyingGitignore}
-                  >
-                    {applyingGitignore ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                    )}
-                    Apply
-                  </Button>
-                </div>
-              </div>
-
               <div className="flex gap-2 mt-6">
                 <Button
                   onClick={handleCancelSettings}
@@ -405,6 +398,29 @@ export function SettingsPage() {
                 onAdd={handleAddPattern}
                 placeholder=".new-tool/**"
               />
+              <div className="pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Add these patterns to each target repo's .gitignore and untrack matching files
+                      from git overthere.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowApplyGitignoreConfirm(true)}
+                    disabled={applyingGitignore}
+                  >
+                    {applyingGitignore ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                    )}
+                    Apply to repos
+                  </Button>
+                </div>
+              </div>
               <div className="flex gap-2 pt-3">
                 <Button
                   onClick={handleCancelPatterns}
@@ -432,22 +448,9 @@ export function SettingsPage() {
 
           <TabsContent value="ignore-patterns" className="flex-1 min-h-0 flex flex-col">
             <div className="max-w-lg flex flex-col flex-1 min-h-0">
-              <div className="flex items-center justify-between py-2">
-                <p className="text-sm">Files matching these patterns will be excluded from sync.</p>
-                <Button
-                  onClick={() => setShowCleanConfirm(true)}
-                  disabled={cleaningIgnored}
-                  size="sm"
-                  variant="outline"
-                >
-                  {cleaningIgnored ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Eraser className="h-3.5 w-3.5" />
-                  )}
-                  Apply
-                </Button>
-              </div>
+              <p className="text-sm py-2">
+                Files matching these patterns will be excluded from sync.
+              </p>
               <PatternList
                 patterns={ignorePatterns}
                 onToggle={handleToggleIgnorePattern}
@@ -457,6 +460,26 @@ export function SettingsPage() {
                 onAdd={handleAddIgnorePattern}
                 placeholder=".DS_Store"
               />
+              <div className="pt-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Remove tracked files matching these patterns from both store and target
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCleanConfirm(true)}
+                    disabled={cleaningIgnored}
+                  >
+                    {cleaningIgnored ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Eraser className="h-3.5 w-3.5" />
+                    )}
+                    Clean files
+                  </Button>
+                </div>
+              </div>
               <div className="flex gap-2 pt-3">
                 <Button
                   onClick={handleCancelIgnorePatterns}
@@ -610,24 +633,103 @@ export function SettingsPage() {
         </Tabs>
       </div>
 
-      <ConfirmDialog
-        open={showCleanConfirm}
-        onOpenChange={setShowCleanConfirm}
-        onConfirm={handleCleanIgnored}
-        title="Clean ignored files"
-        description="This will remove all currently tracked files that match the enabled ignore patterns from both the store and target locations. This action cannot be undone."
-        confirmLabel="Clean"
-        variant="destructive"
-      />
+      <AlertDialog open={showCleanConfirm} onOpenChange={setShowCleanConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clean ignored files</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove all currently tracked files that match the enabled ignore patterns. This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCleanIgnored('target')}
+              disabled={cleaningIgnored}
+            >
+              Clean target only
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCleanIgnored('store')}
+              disabled={cleaningIgnored}
+            >
+              Clean store only
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleCleanIgnored('both')}
+              disabled={cleaningIgnored}
+            >
+              {cleaningIgnored ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Clean both
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConfirmDialog
         open={showApplyGitignoreConfirm}
         onOpenChange={setShowApplyGitignoreConfirm}
         onConfirm={handleApplyGitignore}
-        title="Apply .gitignore to all repos"
-        description="This will update the .gitignore file in all active target repositories and untrack any AI config files from git. Each repo's local pattern overrides will be respected. Existing .gitignore entries outside the managed block will not be affected."
-        confirmLabel="Apply"
+        title="Update target .gitignore files"
+        description="This will update the .gitignore file in all active target repositories to include these AI file patterns, and untrack any matching files from git. Each repo's local pattern overrides will be respected. Existing .gitignore entries outside the managed block will not be affected."
+        confirmLabel="Apply to repos"
       />
+
+      <ConfirmDialog
+        open={showApplyAfterPatternsSave}
+        onOpenChange={setShowApplyAfterPatternsSave}
+        onConfirm={handleApplyGitignore}
+        title="Update target .gitignore files?"
+        description="File patterns have been saved. Would you like to update the .gitignore files in all active target repositories to reflect the new patterns?"
+        confirmLabel="Apply to repos"
+      />
+
+      <AlertDialog open={showCleanAfterIgnoreSave} onOpenChange={setShowCleanAfterIgnoreSave}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clean matching tracked files?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ignore patterns have been saved. Would you like to remove currently tracked files that
+              match these patterns? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Skip</AlertDialogCancel>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCleanIgnored('target')}
+              disabled={cleaningIgnored}
+            >
+              Clean target only
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCleanIgnored('store')}
+              disabled={cleaningIgnored}
+            >
+              Clean store only
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleCleanIgnored('both')}
+              disabled={cleaningIgnored}
+            >
+              {cleaningIgnored ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Clean both
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

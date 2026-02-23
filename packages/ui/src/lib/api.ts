@@ -339,10 +339,11 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ patterns }),
       }),
-    clean: () =>
-      request<{ success: boolean; removed: number; files: string[] }>('/ignore-patterns/clean', {
-        method: 'POST',
-      }),
+    clean: (scope: 'both' | 'target' | 'store' = 'both') =>
+      request<{ success: boolean; removed: number; files: string[] }>(
+        `/ignore-patterns/clean?scope=${scope}`,
+        { method: 'POST' },
+      ),
   },
 
   sync: {

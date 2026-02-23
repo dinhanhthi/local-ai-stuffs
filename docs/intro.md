@@ -33,7 +33,8 @@ AI Sync provides a single-source-of-truth approach:
 6. **Portable** — Clone this tool on any machine, point it to your store directory, and repos with known paths are auto-linked. Unlinked repos can be manually linked via the dashboard
 7. **Separated Data** — App code and user data live in different directories — update the tool without affecting your data
 8. **Symbolic Link Support** — Symlinks are properly detected, tracked, and synced between store and target repositories
-9. **Ignore Patterns** — Configurable glob patterns to exclude unwanted files (e.g., `.DS_Store`, `node_modules/**`) from sync
+9. **Tracking Patterns** — Configurable glob patterns define which files AI Sync should watch and sync (e.g., `CLAUDE.md`, `.claude/**`). You can optionally apply these patterns to each target repo's `.gitignore` and untrack matching files from git. This ensures AI configuration files are managed exclusively by AI Sync and remain hidden from the target repository's version control — keeping your AI tooling private and separate from your project code.
+10. **Ignore Patterns** — Configurable glob patterns to exclude unwanted files (e.g., `.DS_Store`, `node_modules/**`) from AI Sync's internal tracking.
 
 ## How Sync Works
 

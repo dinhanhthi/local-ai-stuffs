@@ -6,6 +6,11 @@
 - Remove `projects/**` from Claude Code default sync patterns (too large, machine-specific)
 - Ensure `.db/` and `.DS_Store` are always present in store `.gitignore` on startup
 - Update docs with database details, quick ignore instructions, and all supported services
+- Move "Apply .gitignore" button from General tab to AI File Patterns tab with clearer naming
+- Add post-save modals to prompt users to apply/clean patterns after saving changes
+- Reorganize Clean button in Ignore Patterns tab with 3-action dialog (target only, store only, both)
+- Add scope parameter to ignore pattern clean API for selective file removal
+- Clarify documentation on Ignore Patterns vs AI File Patterns functionality
 
 ## v0.1.3
 

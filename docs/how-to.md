@@ -123,8 +123,8 @@ The **Templates** page lets you define default AI config files for new repositor
 The **Settings** page has four tabs:
 
 - **General** — Sync interval, watch debounce, auto sync, and auto-commit options
-- **AI File Patterns** — Glob patterns that detect AI config files (add, remove, or toggle)
-- **Ignore Patterns** — Glob patterns to exclude files from sync (e.g., `.DS_Store`, `node_modules/**`). Use the **Clean** button to remove already-tracked files that match ignore patterns
+- **AI File Patterns** — Glob patterns that detect AI config files (add, remove, or toggle). Use **Apply to repos** to add these patterns to each target repo's `.gitignore` and untrack matching files from git. After saving pattern changes, you'll be prompted to apply them to repos automatically
+- **Ignore Patterns** — Glob patterns to exclude files from sync (e.g., `.DS_Store`, `node_modules/**`). These patterns only affect AI Sync's internal tracking — they do **not** modify `.gitignore` files in target repos. Use **Clean files** to remove already-tracked files that match ignore patterns from both the store and target locations. After saving pattern changes, you'll be prompted to clean matching files automatically
 - **Machine** — View/edit machine name, copy machine ID, and see all known machines that share this store
 
 ### Per-Repository Settings
