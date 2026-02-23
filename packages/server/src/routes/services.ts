@@ -27,7 +27,7 @@ import {
   getServiceEnabledIgnorePatterns,
   expandIgnorePatterns,
 } from '../db/index.js';
-import { getDirectorySize, getFileSizes } from '../services/size-calculator.js';
+import { getFileSizes } from '../services/size-calculator.js';
 import {
   safeJoin,
   validateSymlinkTarget,
@@ -109,7 +109,15 @@ export function registerServiceRoutes(app: FastifyInstance, state: AppState): vo
         const svc = mapRow<ServiceConfig>(row);
         const storeName = svc.storePath.replace(/^services\//, '');
         const storeDir = path.join(config.storeServicesPath, storeName);
-        const totalStoreSize = await getDirectorySize(storeDir);
+
+        // Calculate size from tracked files only (respects ignore patterns)
+        const trackedPaths = (
+          db
+            .prepare('SELECT relative_path FROM tracked_files WHERE service_config_id = ?')
+            .all(svc.id) as { relative_path: string }[]
+        ).map((r) => r.relative_path);
+        const fileSizes = await getFileSizes(storeDir, trackedPaths);
+        const totalStoreSize = [...fileSizes.values()].reduce((sum, s) => sum + s, 0);
 
         return {
           ...svc,
