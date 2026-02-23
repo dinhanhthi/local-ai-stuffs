@@ -1,5 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -9,7 +18,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { api, type RepoPatternEntry } from '@/lib/api';
-import { Save, Loader2, ShieldCheck } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Eraser, Save, Loader2, ShieldCheck } from 'lucide-react';
 import { PatternList } from '@/components/pattern-list';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { SettingRow, CheckboxSettingRow } from '@/components/setting-rows';
@@ -37,9 +47,12 @@ export function RepoSettingsDialog({
   const [ignorePatterns, setIgnorePatterns] = useState<RepoPatternEntry[]>([]);
   const [newFilePattern, setNewFilePattern] = useState('');
   const [newIgnorePattern, setNewIgnorePattern] = useState('');
+  const [activeTab, setActiveTab] = useState('general');
   const [applyingGitignore, setApplyingGitignore] = useState(false);
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
   const [showApplyAfterSave, setShowApplyAfterSave] = useState(false);
+  const [cleaningIgnored, setCleaningIgnored] = useState(false);
+  const [showCleanConfirm, setShowCleanConfirm] = useState(false);
   const globalSettingsRef = useRef<Record<string, string>>({});
 
   const fetchSettings = useCallback(async () => {
@@ -136,6 +149,27 @@ export function RepoSettingsDialog({
     }
   };
 
+  const handleCleanIgnored = async (scope: 'both' | 'target' | 'store' = 'both') => {
+    setCleaningIgnored(true);
+    try {
+      const result = await api.repos.cleanIgnored(repoId, scope);
+      if (result.removed > 0) {
+        const where =
+          scope === 'both' ? 'both locations' : scope === 'target' ? 'target repo' : 'store';
+        toast.success(
+          `Removed ${result.removed} ignored file${result.removed > 1 ? 's' : ''} from ${where}`,
+        );
+      } else {
+        toast.info('No tracked files match the ignore patterns');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Clean failed');
+    } finally {
+      setCleaningIgnored(false);
+      setShowCleanConfirm(false);
+    }
+  };
+
   const toggleFilePattern = (index: number) => {
     setFilePatterns((prev) =>
       prev.map((p, i) => (i === index ? { ...p, enabled: !p.enabled } : p)),
@@ -209,7 +243,7 @@ export function RepoSettingsDialog({
           </div>
         ) : (
           <div className="flex flex-col flex-1 min-h-0 gap-4">
-            <Tabs defaultValue="general" className="flex flex-col">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
               <TabsList className="self-start h-7">
                 <TabsTrigger value="general" className="text-xs px-2.5 py-1">
                   General
@@ -284,7 +318,8 @@ export function RepoSettingsDialog({
                   className="absolute inset-0 mt-0 flex flex-col data-[state=inactive]:hidden"
                 >
                   <p className="text-xs text-muted-foreground py-2">
-                    Override which AI file patterns are active for this repository.
+                    Override which AI file patterns are active for this repository. These patterns
+                    will be synced between the local store and the target repository.
                   </p>
                   <PatternList
                     patterns={filePatterns}
@@ -295,29 +330,6 @@ export function RepoSettingsDialog({
                     onAdd={addFilePattern}
                     placeholder=".new-tool/**"
                   />
-                  <div className="pt-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Add these patterns to the target repo's .gitignore and untrack matching
-                          files from git overthere.
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowApplyConfirm(true)}
-                        disabled={applyingGitignore}
-                      >
-                        {applyingGitignore ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                        )}
-                        Apply to repo
-                      </Button>
-                    </div>
-                  </div>
                 </TabsContent>
 
                 <TabsContent
@@ -341,7 +353,7 @@ export function RepoSettingsDialog({
               </div>
             </Tabs>
 
-            <div className="flex justify-end gap-2 pt-2 shrink-0">
+            <div className="flex items-center gap-2 pt-2 shrink-0">
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
@@ -353,6 +365,58 @@ export function RepoSettingsDialog({
                 )}
                 Save
               </Button>
+              {activeTab === 'file-patterns' && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => setShowApplyConfirm(true)}
+                        disabled={applyingGitignore}
+                      >
+                        {applyingGitignore ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                        )}
+                        Apply to .gitignore
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      Add these patterns to the target repo's .gitignore and untrack matching files
+                      from git overthere.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {activeTab === 'ignore-patterns' && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => setShowCleanConfirm(true)}
+                        disabled={cleaningIgnored}
+                      >
+                        {cleaningIgnored ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Eraser className="h-3.5 w-3.5" />
+                        )}
+                        Clean files
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      Remove tracked files matching these ignore patterns from both store and
+                      target.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           </div>
         )}
@@ -364,7 +428,7 @@ export function RepoSettingsDialog({
         onConfirm={handleApplyGitignore}
         title="Update target .gitignore file"
         description="This will update the .gitignore file in the target repository to include these AI file patterns, and untrack any matching files from git. Local pattern overrides will be respected. Existing .gitignore entries outside the managed block will not be affected."
-        confirmLabel="Apply to repo"
+        confirmLabel="Apply to .gitignore"
       />
 
       <ConfirmDialog
@@ -373,8 +437,48 @@ export function RepoSettingsDialog({
         onConfirm={handleApplyGitignore}
         title="Update target .gitignore file?"
         description="Settings have been saved. Would you like to update the .gitignore file in the target repository to reflect the new patterns?"
-        confirmLabel="Apply to repo"
+        confirmLabel="Apply to .gitignore"
       />
+
+      <AlertDialog open={showCleanConfirm} onOpenChange={setShowCleanConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clean ignored files</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove tracked files matching the enabled ignore patterns for this repository. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCleanIgnored('target')}
+              disabled={cleaningIgnored}
+            >
+              Clean target only
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCleanIgnored('store')}
+              disabled={cleaningIgnored}
+            >
+              Clean store only
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleCleanIgnored('both')}
+              disabled={cleaningIgnored}
+            >
+              {cleaningIgnored ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Clean both
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

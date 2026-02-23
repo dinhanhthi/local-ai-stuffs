@@ -264,6 +264,11 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    cleanIgnored: (id: string, scope: 'both' | 'target' | 'store' = 'both') =>
+      request<{ success: boolean; removed: number; files: string[] }>(
+        `/repos/${id}/ignore-patterns/clean?scope=${scope}`,
+        { method: 'POST' },
+      ),
   },
 
   files: {

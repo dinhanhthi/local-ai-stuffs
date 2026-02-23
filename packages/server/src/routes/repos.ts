@@ -444,6 +444,64 @@ export function registerRepoRoutes(app: FastifyInstance, state: AppState): void 
     return { success: true, ...result };
   });
 
+  // Remove tracked files matching ignore patterns for a specific repo
+  app.post<{ Params: { id: string }; Querystring: { scope?: string } }>(
+    '/api/repos/:id/ignore-patterns/clean',
+    async (req, reply) => {
+      if (!state.db) return reply.code(503).send({ error: 'Not configured' });
+      const db = state.db;
+
+      const repo = mapRow<Repo>(db.prepare('SELECT * FROM repos WHERE id = ?').get(req.params.id));
+      if (!repo) return reply.code(404).send({ error: 'Repo not found' });
+
+      const scope = (req.query.scope as 'both' | 'target' | 'store') || 'both';
+      const ignorePatterns = expandIgnorePatterns(getRepoIgnorePatterns(db, repo.id));
+      if (ignorePatterns.length === 0) {
+        return { success: true, removed: 0, files: [] };
+      }
+
+      const matcher = picomatch(ignorePatterns, { dot: true });
+      const trackedFiles = mapRows<TrackedFile>(
+        db.prepare('SELECT * FROM tracked_files WHERE repo_id = ?').all(repo.id),
+      );
+
+      const removedFiles: string[] = [];
+      const storeName = repo.storePath.replace(/^repos\//, '');
+
+      for (const file of trackedFiles) {
+        if (!matcher(file.relativePath)) continue;
+
+        const storeFilePath = path.join(config.storeReposPath, storeName, file.relativePath);
+        const targetFilePath = path.join(repo.localPath, file.relativePath);
+
+        if (scope === 'both' || scope === 'store') {
+          try {
+            await fs.unlink(storeFilePath);
+          } catch {
+            // May not exist
+          }
+        }
+        if (scope === 'both' || scope === 'target') {
+          try {
+            await fs.unlink(targetFilePath);
+          } catch {
+            // May not exist
+          }
+        }
+
+        db.prepare('DELETE FROM conflicts WHERE tracked_file_id = ?').run(file.id);
+        db.prepare('DELETE FROM tracked_files WHERE id = ?').run(file.id);
+        removedFiles.push(file.relativePath);
+      }
+
+      if (removedFiles.length > 0 && (scope === 'both' || scope === 'store')) {
+        await commitStoreChanges(`Clean ${removedFiles.length} ignored file(s) from ${repo.name}`);
+      }
+
+      return { success: true, removed: removedFiles.length, files: removedFiles };
+    },
+  );
+
   // Pause syncing
   app.post<{ Params: { id: string } }>('/api/repos/:id/pause', async (req, reply) => {
     if (!state.db || !state.syncEngine) return reply.code(503).send({ error: 'Not configured' });

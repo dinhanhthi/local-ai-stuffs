@@ -14,6 +14,9 @@
 - Stop auto-applying .gitignore when saving file patterns — prompt user to confirm instead
 - Apply same "Apply to repo" button and post-save prompt to per-repo settings dialog
 - Show "user" badge on custom-added patterns in global Settings to distinguish from defaults, with user patterns sorted to the top
+- Consolidate action buttons (Apply to .gitignore, Clean files) into the Cancel/Save row with tooltip descriptions
+- Add per-repo "Clean files" action with scoped endpoint for removing ignored tracked files
+- Show context-sensitive action buttons: "Apply to .gitignore" on AI File Patterns tab, "Clean files" on Ignore Patterns tab
 
 ## v0.1.3
 

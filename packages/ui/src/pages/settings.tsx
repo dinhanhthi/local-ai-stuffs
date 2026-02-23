@@ -16,6 +16,7 @@ import { SettingRow, CheckboxSettingRow } from '@/components/setting-rows';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api, type FilePattern, type MachineInfo } from '@/lib/api';
 import { useMachine } from '@/hooks/use-machines';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, Copy, Eraser, Loader2, Monitor, Save, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -406,7 +407,10 @@ export function SettingsPage() {
 
           <TabsContent value="file-patterns" className="flex-1 min-h-0 flex flex-col">
             <div className="max-w-lg flex flex-col flex-1 min-h-0">
-              <p className="text-sm py-2">Glob patterns for files to watch and sync.</p>
+              <p className="text-sm py-2">
+                Glob patterns for files to watch and sync. Patterns are synced between the local
+                store and the target repository.
+              </p>
               <PatternList
                 patterns={patterns}
                 onToggle={handleTogglePattern}
@@ -416,30 +420,7 @@ export function SettingsPage() {
                 onAdd={handleAddPattern}
                 placeholder=".new-tool/**"
               />
-              <div className="pt-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Add these patterns to each target repo's .gitignore and untrack matching files
-                      from git overthere.
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowApplyGitignoreConfirm(true)}
-                    disabled={applyingGitignore}
-                  >
-                    {applyingGitignore ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                    )}
-                    Apply to repos
-                  </Button>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-3">
+              <div className="flex items-center gap-2 pt-3">
                 <Button
                   onClick={handleCancelPatterns}
                   disabled={!patternsDirty}
@@ -460,6 +441,30 @@ export function SettingsPage() {
                   )}
                   Save
                 </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => setShowApplyGitignoreConfirm(true)}
+                        disabled={applyingGitignore}
+                      >
+                        {applyingGitignore ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                        )}
+                        Apply to .gitignore
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      Add these patterns to each target repo's .gitignore and untrack matching files
+                      from git overthere.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </TabsContent>
@@ -478,27 +483,7 @@ export function SettingsPage() {
                 onAdd={handleAddIgnorePattern}
                 placeholder=".DS_Store"
               />
-              <div className="pt-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    Remove tracked files matching these patterns from both store and target
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowCleanConfirm(true)}
-                    disabled={cleaningIgnored}
-                  >
-                    {cleaningIgnored ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Eraser className="h-3.5 w-3.5" />
-                    )}
-                    Clean files
-                  </Button>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-3">
+              <div className="flex items-center gap-2 pt-3">
                 <Button
                   onClick={handleCancelIgnorePatterns}
                   disabled={!ignorePatternsDirty}
@@ -519,6 +504,29 @@ export function SettingsPage() {
                   )}
                   Save
                 </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => setShowCleanConfirm(true)}
+                        disabled={cleaningIgnored}
+                      >
+                        {cleaningIgnored ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Eraser className="h-3.5 w-3.5" />
+                        )}
+                        Clean files
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      Remove tracked files matching these patterns from both store and target.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </TabsContent>
@@ -697,7 +705,7 @@ export function SettingsPage() {
         onConfirm={handleApplyGitignore}
         title="Update target .gitignore files"
         description="This will update the .gitignore file in all active target repositories to include these AI file patterns, and untrack any matching files from git. Each repo's local pattern overrides will be respected. Existing .gitignore entries outside the managed block will not be affected."
-        confirmLabel="Apply to repos"
+        confirmLabel="Apply to .gitignore"
       />
 
       <ConfirmDialog
@@ -706,7 +714,7 @@ export function SettingsPage() {
         onConfirm={handleApplyGitignore}
         title="Update target .gitignore files?"
         description="File patterns have been saved. Would you like to update the .gitignore files in all active target repositories to reflect the new patterns?"
-        confirmLabel="Apply to repos"
+        confirmLabel="Apply to .gitignore"
       />
 
       <AlertDialog open={showCleanAfterIgnoreSave} onOpenChange={setShowCleanAfterIgnoreSave}>
