@@ -49,6 +49,25 @@ export async function initStoreRepo(): Promise<void> {
     await git.commit('Initial store setup');
   }
 
+  // Ensure .db/ and .DS_Store are always in .gitignore (for stores created before this rule existed)
+  const gitignorePath = `${config.storePath}/.gitignore`;
+  const requiredEntries = ['.db/', '.DS_Store'];
+  try {
+    let content = await fs.readFile(gitignorePath, 'utf-8');
+    const lines = content.split('\n').map((l) => l.trim());
+    const missing = requiredEntries.filter(
+      (entry) => !lines.includes(entry) && !lines.includes(entry.replace('/', '')),
+    );
+    if (missing.length > 0) {
+      const separator = content.endsWith('\n') ? '' : '\n';
+      content += separator + missing.join('\n') + '\n';
+      await fs.writeFile(gitignorePath, content, 'utf-8');
+    }
+  } catch {
+    // No .gitignore exists — create one
+    await fs.writeFile(gitignorePath, requiredEntries.join('\n') + '\n', 'utf-8');
+  }
+
   // Ensure machines.json exists
   const machinesPath = path.join(config.storePath, 'machines.json');
   try {
