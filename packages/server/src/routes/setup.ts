@@ -14,6 +14,7 @@ import { initStoreRepo, commitStoreChanges } from '../services/store-git.js';
 import { initDb } from '../db/index.js';
 import { SyncEngine } from '../services/sync-engine.js';
 import { registerCurrentMachine, seedMachinesFile, autoLinkRepos } from '../services/machines.js';
+import { restoreOrMigrateSettings } from '../services/sync-settings.js';
 import type { AppState } from '../app-state.js';
 
 export function registerSetupRoutes(app: FastifyInstance, state: AppState): void {
@@ -164,6 +165,9 @@ export function registerSetupRoutes(app: FastifyInstance, state: AppState): void
     // Initialize store repo + DB
     await initStoreRepo();
     const db = initDb(config.dbPath);
+
+    // Restore shared settings from sync-settings.json (or export on first run)
+    restoreOrMigrateSettings(db);
 
     // Register machine and auto-link repos from machines.json
     registerCurrentMachine();

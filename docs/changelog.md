@@ -2,6 +2,7 @@
 
 ## v0.2.0
 
+- Add cross-machine settings sync: all settings, file patterns, ignore patterns, and per-repo/service overrides are now persisted in a git-tracked `sync-settings.json` file. Settings are automatically restored on new machines when you clone the store
 - Add cross-machine service linking: unlinked services now appear on the dashboard with Link/Delete/Auto-link actions, matching existing repo linking behavior. Store custom service metadata in single `services/services.json`
 
 ## v0.1.4

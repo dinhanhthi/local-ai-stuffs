@@ -4,6 +4,7 @@ import { config, isConfigured, ensureMachineId } from './config.js';
 import { initStoreRepo, commitStoreChanges } from './services/store-git.js';
 import { SyncEngine } from './services/sync-engine.js';
 import { registerCurrentMachine, seedMachinesFile, autoLinkRepos } from './services/machines.js';
+import { restoreOrMigrateSettings } from './services/sync-settings.js';
 import type { AppState } from './app-state.js';
 
 async function main() {
@@ -20,6 +21,9 @@ async function main() {
 
     await initStoreRepo();
     console.log(`Store initialized at ${config.storePath}`);
+
+    // Restore shared settings from sync-settings.json (or export on first run)
+    restoreOrMigrateSettings(state.db);
 
     // Register this machine and seed/auto-link repos
     registerCurrentMachine();

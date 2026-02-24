@@ -14,6 +14,11 @@ import {
 import { DEFAULT_PATTERNS, DEFAULT_IGNORE_PATTERNS } from '../db/schema.js';
 import { setupGitignore } from '../services/gitignore-manager.js';
 import { commitStoreChanges } from '../services/store-git.js';
+import {
+  syncSettingsUpdateGlobal,
+  syncSettingsUpdateFilePatterns,
+  syncSettingsUpdateIgnorePatterns,
+} from '../services/sync-settings.js';
 import type { Repo, TrackedFile } from '../types/index.js';
 
 export function registerSettingsRoutes(app: FastifyInstance, state: AppState): void {
@@ -43,6 +48,7 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
       upsert.run(key, value, value);
     }
 
+    syncSettingsUpdateGlobal(db);
     return { success: true };
   });
 
@@ -107,6 +113,7 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
         insert.run(p.id || uuid(), p.pattern, p.enabled ? 1 : 0);
       }
 
+      syncSettingsUpdateIgnorePatterns(db);
       return { success: true };
     },
   );
@@ -223,6 +230,7 @@ export function registerSettingsRoutes(app: FastifyInstance, state: AppState): v
         insert.run(p.id || uuid(), p.pattern, p.enabled ? 1 : 0);
       }
 
+      syncSettingsUpdateFilePatterns(db);
       return { success: true };
     },
   );

@@ -28,7 +28,7 @@ AI Sync provides a single-source-of-truth approach:
 1. **Central Store** — All AI config files are stored in a user-chosen directory (a separate git repo)
 2. **Automatic Sync** — A background service watches for file changes and syncs bidirectionally between the store and target repositories
 3. **AI Service Configs** — Sync local AI service settings (e.g., `~/.claude/` for Claude Code) with predefined file patterns — no manual path browsing needed
-4. **Multi-Machine Support** — Each machine gets a unique identity. A git-tracked `machines.json` maps repo paths per machine, so the same store works across machines with different directory structures. Repos are auto-linked on startup when valid path mappings exist
+4. **Multi-Machine Support** — Each machine gets a unique identity. Git-tracked files (`machines.json` for path mappings, `sync-settings.json` for shared settings) ensure the same store works across machines with different directory structures. Repos are auto-linked on startup, and all settings/patterns/overrides are automatically restored
 5. **Web Admin UI** — A local web interface for managing repositories, editing files, resolving conflicts, and monitoring sync status
 6. **Portable** — Clone this tool on any machine, point it to your store directory, and repos/services with known paths are auto-linked. Unlinked items can be manually linked via the dashboard
 7. **Separated Data** — App code and user data live in different directories — update the tool without affecting your data
@@ -68,30 +68,33 @@ AI Sync handles this with:
 
 - **Machine Identity** — Each machine gets a unique UUID and a human-readable name (defaults to hostname), stored in the local config (`~/.ai-sync/config.json`)
 - **`machines.json`** — A git-tracked file in the store repo that maps each repo/service to each machine's local path. All machines see each other's mappings through git sync
-- **Auto-linking** — On startup, if the store contains repos or services with known paths for the current machine, they are automatically registered in the local database and start syncing. Built-in services also try the platform default path (e.g., `~/.claude/`) when no explicit mapping exists
+- **`sync-settings.json`** — A git-tracked file that stores all shared settings: global settings, file patterns, ignore patterns, and per-repo/service overrides. On startup, settings are restored from this file so customizations carry over to new machines automatically
+- **Auto-linking** — On startup, if the store contains repos or services with known paths for the current machine, they are automatically registered in the local database and start syncing. Built-in services also try the platform default path (e.g., `~/.claude/`) when no explicit mapping exists. Per-repo/service settings overrides are applied as items are linked
 - **Unlinked items** — The dashboard shows store repos and services that exist but aren't linked on the current machine, with options to link manually, auto-link, or delete from the store
 - **Machine settings** — View and edit the machine name, see the machine ID, and list all known machines in the Settings page
 
 ## Local Database
 
-AI Sync uses a **SQLite database** (`<data-dir>/.db/ai-sync.db`) to track all runtime state on each machine. The database is **not synced** between machines — it is git-ignored (`.db/` in the store's `.gitignore`) because its contents are machine-specific.
+AI Sync uses a **SQLite database** (`<data-dir>/.db/ai-sync.db`) to track runtime state on each machine. The database is **not synced** between machines — it is git-ignored (`.db/` in the store's `.gitignore`) because much of its contents are machine-specific (local paths, checksums, sync status).
+
+However, **settings and patterns are synced** via the git-tracked `sync-settings.json` file. The database acts as a local cache — on each startup, it is hydrated from `sync-settings.json` so all customizations carry over to new machines.
 
 What the database stores:
 
-| Table              | Purpose                                                                |
-| ------------------ | ---------------------------------------------------------------------- |
-| `repos`            | Registered repositories with local paths (different per machine)       |
-| `service_configs`  | Registered AI service configs with local paths                         |
-| `tracked_files`    | Every synced file with checksums, mtimes, and sync status              |
-| `conflicts`        | Pending conflicts with store/target/base/merged content for resolution |
-| `file_patterns`    | Glob patterns that detect AI config files                              |
-| `ignore_patterns`  | Glob patterns to exclude files from sync                               |
-| `settings`         | App configuration (sync interval, auto-commit, etc.)                   |
-| `repo_settings`    | Per-repo overrides for patterns and ignore rules                       |
-| `service_settings` | Per-service overrides for patterns and ignore rules                    |
-| `sync_log`         | Event history for debugging (auto-pruned after 30 days)                |
+| Table              | Purpose                                                                | Synced via `sync-settings.json`? |
+| ------------------ | ---------------------------------------------------------------------- | -------------------------------- |
+| `repos`            | Registered repositories with local paths (different per machine)       | No (machine-specific)            |
+| `service_configs`  | Registered AI service configs with local paths                         | No (machine-specific)            |
+| `tracked_files`    | Every synced file with checksums, mtimes, and sync status              | No (machine-specific)            |
+| `conflicts`        | Pending conflicts with store/target/base/merged content for resolution | No (machine-specific)            |
+| `file_patterns`    | Glob patterns that detect AI config files                              | Yes                              |
+| `ignore_patterns`  | Glob patterns to exclude files from sync                               | Yes                              |
+| `settings`         | App configuration (sync interval, auto-commit, etc.)                   | Yes                              |
+| `repo_settings`    | Per-repo overrides for patterns and ignore rules                       | Yes (keyed by store path)        |
+| `service_settings` | Per-service overrides for patterns and ignore rules                    | Yes (keyed by store path)        |
+| `sync_log`         | Event history for debugging (auto-pruned after 30 days)                | No (machine-specific)            |
 
-The database is created automatically on first startup and rebuilt from the store files if deleted. The actual AI config files live in the git-tracked store — the database is just an index of local state, checksums, and settings.
+The database is created automatically on first startup. Settings and patterns are restored from `sync-settings.json` on each startup. The actual AI config files live in the git-tracked store.
 
 ## Architecture Overview
 

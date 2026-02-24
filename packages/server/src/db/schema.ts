@@ -97,7 +97,7 @@ export const DEFAULT_IGNORE_PATTERNS = [
   'Thumbs.db',
 ];
 
-const DEFAULT_SETTINGS: Record<string, string> = {
+export const DEFAULT_SETTINGS: Record<string, string> = {
   auto_sync: 'true',
   auto_commit_store: 'true',
   sync_interval_ms: '5000',

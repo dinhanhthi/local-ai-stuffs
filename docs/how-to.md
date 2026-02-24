@@ -120,6 +120,8 @@ The **Templates** page lets you define default AI config files for new repositor
 
 ## Configuring Settings
 
+All settings changes are automatically saved to a git-tracked `sync-settings.json` file in the store, so they sync across machines when you push/pull the store repository.
+
 The **Settings** page has four tabs:
 
 - **General** — Sync interval, watch debounce, auto sync, and auto-commit options
@@ -166,7 +168,7 @@ Use this when you want to completely get rid of files from both sides. Unlike Un
 | Confirmation required    | No                                  | Yes                        |
 | Reversible               | Yes — remove the pattern to re-sync | No                         |
 
-These patterns are persisted in the local SQLite database (`<data-dir>/.db/ai-sync.db`) — not in any config file. Specifically, repo patterns go into the `repo_settings` table and service patterns go into `service_settings`.
+These patterns are persisted in the local SQLite database and also in the git-tracked `sync-settings.json` file, so they carry over to other machines automatically when you clone the store.
 
 ## Pushing Changes to Remote
 
@@ -179,8 +181,10 @@ If your data directory is connected to a remote git repository, use the **Push c
 3. On the setup screen, point to the cloned store directory
 4. The app will automatically:
    - Assign a unique machine ID and name (based on hostname)
+   - Restore all shared settings from `sync-settings.json` (global settings, file patterns, ignore patterns, per-repo/service overrides)
    - Register this machine in `machines.json`
    - Auto-link any repos and services that have known paths for this machine
+   - Apply per-repo/service settings overrides as repos and services are linked
 5. Items that couldn't be auto-linked will appear as **Unlinked Services** and **Unlinked Repositories** on the dashboard — click **Link** to map them to local paths, or **Auto-link All** if paths are already mapped from another machine
 6. To remove an unlinked item you no longer need, click the **trash icon** on its card to delete it from the store
 

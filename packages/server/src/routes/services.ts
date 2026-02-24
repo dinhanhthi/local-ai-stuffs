@@ -21,6 +21,7 @@ import {
   registerCustomDefinition,
 } from '../services/service-definitions.js';
 import { scanServiceFiles } from '../services/service-scanner.js';
+import { syncSettingsUpdateService, syncSettingsRemoveService } from '../services/sync-settings.js';
 import type { ServiceConfig, ServiceConfigWithSummary, TrackedFile } from '../types/index.js';
 import type { AppState } from '../app-state.js';
 import {
@@ -587,6 +588,7 @@ export function registerServiceRoutes(app: FastifyInstance, state: AppState): vo
         }
         removeServiceMeta(serviceType);
         removeServiceMapping(svc.storePath);
+        syncSettingsRemoveService(svc.storePath);
       } else {
         removeServiceMapping(svc.storePath, config.machineId);
       }
@@ -813,6 +815,9 @@ export function registerServiceRoutes(app: FastifyInstance, state: AppState): vo
     if (svc.status === 'active') {
       await state.syncEngine.startWatcherForService(svc);
     }
+
+    // Persist to sync-settings.json for cross-machine sync
+    syncSettingsUpdateService(db, svc.storePath);
 
     return { success: true };
   });

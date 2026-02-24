@@ -15,6 +15,7 @@ import { getFileMtime, getSymlinkMtime, fileExists } from '../services/repo-scan
 import { setupGitignore } from '../services/gitignore-manager.js';
 import { commitStoreChanges } from '../services/store-git.js';
 import { setRepoMapping, removeRepoMapping } from '../services/machines.js';
+import { syncSettingsUpdateRepo, syncSettingsRemoveRepo } from '../services/sync-settings.js';
 import type { Repo, RepoWithSummary, TrackedFile } from '../types/index.js';
 import type { AppState } from '../app-state.js';
 import {
@@ -368,6 +369,7 @@ export function registerRepoRoutes(app: FastifyInstance, state: AppState): void 
         }
         // Remove all machine mappings when deleting store files
         removeRepoMapping(repo.storePath);
+        syncSettingsRemoveRepo(repo.storePath);
       } else {
         // Only remove current machine's mapping
         removeRepoMapping(repo.storePath, config.machineId);
@@ -692,6 +694,14 @@ export function registerRepoRoutes(app: FastifyInstance, state: AppState): void 
         await state.syncEngine.stopWatcherForRepo(repoRow.id);
         await state.syncEngine.startWatcherForRepo(repoRow);
       }
+    }
+
+    // Persist to sync-settings.json for cross-machine sync
+    const repoForSync = db.prepare('SELECT store_path FROM repos WHERE id = ?').get(repoId) as
+      | { store_path: string }
+      | undefined;
+    if (repoForSync) {
+      syncSettingsUpdateRepo(db, repoForSync.store_path);
     }
 
     return { success: true };

@@ -18,6 +18,7 @@ import { fileChecksum, symlinkChecksum } from './checksum.js';
 import { getFileMtime, getSymlinkMtime, fileExists, symlinkExists } from './repo-scanner.js';
 import { setupGitignore } from './gitignore-manager.js';
 import { getRepoEnabledFilePatterns } from '../db/index.js';
+import { applyOverridesForRepo, applyOverridesForService } from './sync-settings.js';
 import { getServiceDefinition, registerCustomDefinition } from './service-definitions.js';
 import { scanServiceFiles } from './service-scanner.js';
 
@@ -459,6 +460,9 @@ export async function linkStoreRepo(
   // Update machines.json mapping
   setRepoMapping(storePath, localPath);
 
+  // Apply deferred settings overrides from sync-settings.json
+  applyOverridesForRepo(db, storePath);
+
   return repoId;
 }
 
@@ -680,6 +684,9 @@ export async function linkStoreService(
 
   // Update machines.json mapping
   setServiceMapping(storePath, localPath);
+
+  // Apply deferred settings overrides from sync-settings.json
+  applyOverridesForService(db, storePath);
 
   return serviceId;
 }
