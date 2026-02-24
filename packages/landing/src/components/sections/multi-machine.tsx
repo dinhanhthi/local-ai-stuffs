@@ -1,6 +1,6 @@
 export function MultiMachineSection() {
   return (
-    <section className="py-20">
+    <section className="py-12 sm:py-16 md:py-20">
       <h2 className="text-3xl font-bold tracking-tight text-center mb-4">Work Across Machines</h2>
       <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
         Your store is just a Git repo. Push it to GitHub (private) and pull it on another machine.

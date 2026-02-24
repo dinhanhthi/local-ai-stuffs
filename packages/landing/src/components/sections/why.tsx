@@ -45,7 +45,7 @@ export function WhySection() {
   ];
 
   return (
-    <section id="why" className="py-20 animate-fade-up delay-200">
+    <section id="why" className="py-12 sm:py-16 md:py-20 animate-fade-up delay-200">
       <h2 className="text-3xl font-bold tracking-tight text-center mb-12">Why AI Sync?</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {cards.map((card) => (

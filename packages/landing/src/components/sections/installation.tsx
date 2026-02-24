@@ -25,7 +25,7 @@ function CodeBlock({ children }: { children: string }) {
 
 export function InstallationSection() {
   return (
-    <section id="install" className="py-20 scroll-mt-10">
+    <section id="install" className="py-12 sm:py-16 md:py-20 scroll-mt-10">
       <h2 className="text-3xl font-bold tracking-tight text-center mb-12">
         Installation &amp; Usage
       </h2>

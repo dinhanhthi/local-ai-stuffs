@@ -1,6 +1,6 @@
 export function HeroSection() {
   return (
-    <section className="py-24 text-center animate-fade-up delay-100">
+    <section className="py-12 sm:py-16 md:py-20 text-center animate-fade-up delay-100">
       <img src="/logo.svg" alt="AI Sync logo" className="mx-auto mb-6 h-20 w-20" />
       <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight mb-6">
         Sync Your AI Configs

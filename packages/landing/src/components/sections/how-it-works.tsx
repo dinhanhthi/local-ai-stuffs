@@ -1,6 +1,6 @@
 export function HowItWorksSection() {
   return (
-    <section id="how" className="py-20">
+    <section id="how" className="py-12 sm:py-16 md:py-20">
       <h2 className="text-3xl font-bold tracking-tight text-center mb-4">How It Works</h2>
       <p className="text-center text-muted-foreground mb-12">
         A background service watches your files and syncs them to a central git store.
