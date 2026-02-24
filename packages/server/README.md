@@ -5,7 +5,7 @@ Backend server for AI Sync. Built with Fastify 5, TypeScript (ESM), better-sqlit
 ## Development
 
 ```bash
-# From monorepo root (starts both server and UI)
+# From monorepo root (starts server, UI, and landing page)
 pnpm dev
 
 # Server only

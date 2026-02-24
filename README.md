@@ -90,7 +90,7 @@ Items that couldn't be auto-linked appear as **Unlinked Repositories** / **Unlin
 ## Development
 
 ```bash
-# Start both server and UI with hot reload
+# Start server, UI, and landing page with hot reload
 pnpm dev # open http://localhost:2703
 
 # Or run them separately

@@ -5,7 +5,7 @@ Web admin UI for AI Sync. Built with React 19, Vite, shadcn/ui, Tailwind CSS 4, 
 ## Development
 
 ```bash
-# From monorepo root (starts both UI and server)
+# From monorepo root (starts server, UI, and landing page)
 pnpm dev
 
 # UI only

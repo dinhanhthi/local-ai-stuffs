@@ -8,7 +8,7 @@
   "description": "Centralized management tool for AI configuration files across Git repositories",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n server,ui -c blue,green \"pnpm --filter @ai-sync/server dev\" \"pnpm --filter @ai-sync/ui dev\"",
+    "dev": "concurrently -n server,ui,landing -c blue,green,magenta \"pnpm --filter @ai-sync/server dev\" \"pnpm --filter @ai-sync/ui dev\" \"pnpm --filter @ai-sync/landing dev\"",
     "build": "pnpm --filter @ai-sync/ui build && pnpm --filter @ai-sync/server build",
     "start": "node packages/server/dist/index.js",
     "dev:server": "pnpm --filter @ai-sync/server dev",

@@ -131,7 +131,7 @@ pnpm build
 # Production mode
 pnpm start # open http://localhost:2703
 
-# Development mode (with hot reload) for both server and UI
+# Development mode (with hot reload) for server, UI, and landing page
 pnpm dev # open http://localhost:2703
 
 # Development mode (with hot reload) for server only

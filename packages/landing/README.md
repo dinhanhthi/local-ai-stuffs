@@ -5,7 +5,10 @@ Public-facing landing page for AI Sync. Built with React, Vite, and Tailwind CSS
 ## Development
 
 ```bash
-# From monorepo root
+# From monorepo root (starts all three: server, UI, and landing)
+pnpm dev
+
+# Landing page only
 pnpm dev:landing
 
 # Or from this directory
