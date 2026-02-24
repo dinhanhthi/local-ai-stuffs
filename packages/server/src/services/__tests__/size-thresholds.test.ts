@@ -18,8 +18,9 @@ import {
 
 vi.mock('../store-git.js', () => ({
   queueStoreCommit: vi.fn(),
-  ensureStoreCommitted: vi.fn().mockResolvedValue(undefined),
+  ensureStoreCommitted: vi.fn().mockResolvedValue([]),
   getCommittedContent: vi.fn(async () => null),
+  getHeadCommitHash: vi.fn().mockResolvedValue('mock-head-hash'),
   gitMergeFile: vi.fn(async () => ({ content: '', hasConflicts: false })),
 }));
 
@@ -33,6 +34,7 @@ vi.mock('../file-watcher.js', async () => {
     startServiceStoreWatcher = vi.fn().mockResolvedValue(undefined);
     startServiceTargetWatcher = vi.fn().mockResolvedValue(undefined);
     stopServiceTargetWatcher = vi.fn().mockResolvedValue(undefined);
+    clearStoreDebounceTimers = vi.fn();
     stopAll = vi.fn().mockResolvedValue(undefined);
   }
   return { FileWatcherService: MockFileWatcherService };

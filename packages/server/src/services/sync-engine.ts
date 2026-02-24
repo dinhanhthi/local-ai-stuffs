@@ -26,10 +26,13 @@ import { createConflict } from './conflict-detector.js';
 import { sendConflictNotification, clearNotifiedConflict } from './notifier.js';
 import {
   queueStoreCommit,
+  commitStoreChanges,
   getCommittedContent,
   getCommittedContentAt,
+  getHeadCommitHash,
   ensureStoreCommitted,
   gitMergeFile,
+  type MergeConflictInfo,
 } from './store-git.js';
 import { FileWatcherService } from './file-watcher.js';
 import { scanServiceFiles } from './service-scanner.js';
@@ -82,6 +85,50 @@ function broadcastId(target: SyncTarget): { repoId?: string; serviceId?: string 
   return target.type === 'repo' ? { repoId: target.id } : { serviceId: target.id };
 }
 
+/**
+ * Check if file content contains git conflict markers.
+ * Used to detect when a git merge "succeeds" but leaves conflict markers in the file
+ * (e.g. when git auto-merge keeps both sides).
+ */
+function hasConflictMarkers(content: string): boolean {
+  // Check for conflict markers at the start of a line (how git writes them).
+  // Simple includes() would false-positive on documentation that mentions markers.
+  return /^<{7}/m.test(content) && /^={7}/m.test(content) && /^>{7}/m.test(content);
+}
+
+/**
+ * Parse conflict markers from content, extracting the "ours" and "theirs" sides.
+ * Lines outside conflict blocks are included in both sides.
+ */
+function parseConflictMarkerSides(content: string): { ours: string; theirs: string } {
+  const oursLines: string[] = [];
+  const theirsLines: string[] = [];
+  let inOurs = false;
+  let inTheirs = false;
+
+  for (const line of content.split('\n')) {
+    if (line.startsWith('<<<<<<<')) {
+      inOurs = true;
+      inTheirs = false;
+    } else if (line.startsWith('=======') && inOurs) {
+      inOurs = false;
+      inTheirs = true;
+    } else if (line.startsWith('>>>>>>>') && inTheirs) {
+      inOurs = false;
+      inTheirs = false;
+    } else if (inOurs) {
+      oursLines.push(line);
+    } else if (inTheirs) {
+      theirsLines.push(line);
+    } else {
+      oursLines.push(line);
+      theirsLines.push(line);
+    }
+  }
+
+  return { ours: oursLines.join('\n'), theirs: theirsLines.join('\n') };
+}
+
 export class SyncEngine {
   private db: Database.Database;
   private watcher: FileWatcherService;
@@ -91,6 +138,9 @@ export class SyncEngine {
   private lastLogCleanup = 0;
   private sizeBlockLoggedAt = new Map<string, number>();
   private baseCommitOverride: string | null = null;
+  private pullSyncInProgress = false;
+  private pullCompletedAt = 0;
+  private lastKnownHead: string | null = null;
 
   constructor(db: Database.Database) {
     this.db = db;
@@ -119,6 +169,9 @@ export class SyncEngine {
   async start(): Promise<void> {
     // Ensure store git repo is committed before starting comparisons
     await ensureStoreCommitted();
+
+    // Track HEAD so we can detect external git operations (manual pull, etc.)
+    this.lastKnownHead = await getHeadCommitHash();
 
     // Set up watcher event handlers
     this.watcher.on('storeChange', (relativePath: string) => {
@@ -191,10 +244,14 @@ export class SyncEngine {
   private scheduleNextPoll(interval: number): void {
     this.pollingTimer = setTimeout(async () => {
       try {
-        await this.scanAllReposForNewFiles();
-        await this.scanAllServicesForNewFiles();
-        await this.syncAllRepos();
-        await this.syncAllServices();
+        // Check for external git operations before normal polling sync
+        const handled = await this.checkForExternalHeadChange();
+        if (!handled) {
+          await this.scanAllReposForNewFiles();
+          await this.scanAllServicesForNewFiles();
+          await this.syncAllRepos();
+          await this.syncAllServices();
+        }
         this.pruneOldSyncLogs();
       } catch (err) {
         console.error('Polling error:', err);
@@ -273,7 +330,42 @@ export class SyncEngine {
     return matcher(relativePath);
   }
 
+  /**
+   * Detect external git operations (manual pull, merge, etc.) by checking
+   * if HEAD has changed since we last looked. If so, trigger a full sync
+   * pass using the previous HEAD as the base reference.
+   * Returns true if an external change was detected and handled.
+   */
+  private async checkForExternalHeadChange(): Promise<boolean> {
+    if (this.pullSyncInProgress) return false;
+
+    const currentHead = await getHeadCommitHash();
+    if (!currentHead || currentHead === this.lastKnownHead) return false;
+
+    // HEAD changed externally — trigger syncAfterPull with previous HEAD as base
+    const previousHead = this.lastKnownHead;
+    this.lastKnownHead = currentHead;
+
+    if (previousHead) {
+      // Run the full post-pull sync pass so all files get the correct base
+      await this.syncAfterPull(previousHead);
+    }
+    return true;
+  }
+
   private async handleStoreChange(storeRelative: string): Promise<void> {
+    // Skip watcher-triggered syncs during post-pull sync pass
+    // (syncAfterPull already handles all files with the correct base)
+    if (this.pullSyncInProgress) return;
+
+    // Guard against late-arriving debounced watcher events from a recent pull.
+    // chokidar's awaitWriteFinish (200ms) + debounce (300ms) can delay events
+    // beyond the syncAfterPull() completion, causing them to use the wrong base.
+    if (this.pullCompletedAt && Date.now() - this.pullCompletedAt < 2000) return;
+
+    // Detect external git operations (manual pull, etc.)
+    if (await this.checkForExternalHeadChange()) return;
+
     // storeRelative is like "repo-name/CLAUDE.md"
     const slashIdx = storeRelative.indexOf('/');
     if (slashIdx === -1) return;
@@ -355,6 +447,11 @@ export class SyncEngine {
   }
 
   private async handleServiceStoreChange(storeRelative: string): Promise<void> {
+    // Skip watcher-triggered syncs during post-pull sync pass
+    if (this.pullSyncInProgress) return;
+    if (this.pullCompletedAt && Date.now() - this.pullCompletedAt < 2000) return;
+    if (await this.checkForExternalHeadChange()) return;
+
     // storeRelative is like "claude-code/commands/foo.md"
     const slashIdx = storeRelative.indexOf('/');
     if (slashIdx === -1) return;
@@ -539,8 +636,69 @@ export class SyncEngine {
     const targetContent = await fs.readFile(targetFilePath, 'utf-8');
 
     if (storeContent === targetContent) {
+      // If both sides have conflict markers (e.g. from a previous sync that
+      // copied merged content to both), detect and create a conflict record.
+      if (this.baseCommitOverride && hasConflictMarkers(storeContent)) {
+        const { ours, theirs } = parseConflictMarkerSides(storeContent);
+        // Revert both to clean local content
+        await fs.writeFile(storeFilePath, ours, 'utf-8');
+        await fs.writeFile(targetFilePath, ours, 'utf-8');
+        this.watcher.markSelfChange(storeFilePath);
+        this.watcher.markSelfChange(targetFilePath);
+        await this.createConflictFromMergeMarkers(
+          trackedFile,
+          target,
+          storeFilePath,
+          ours,
+          theirs,
+          storeContent,
+        );
+        return;
+      }
+
       // Already in sync — update checksums/mtime and clear any stale conflicts
       const checksum = contentChecksum(storeContent);
+
+      // Don't auto-clear conflicts that have unresolved remote content.
+      // After a merge abort, store and target match (both have local content),
+      // but the conflict record holds remote content the user needs to review.
+      // We detect this by checking: remote content (store_content) differs from
+      // current file AND current file still matches the local side (target_content).
+      // If the user edited files to something new, we allow auto-clear.
+      const hadConflict = this.hasConflict(trackedFile.id);
+      let conflictPreserved = false;
+      if (hadConflict) {
+        const pendingConflict = this.db
+          .prepare(
+            "SELECT store_content, target_content FROM conflicts WHERE tracked_file_id = ? AND status = 'pending'",
+          )
+          .get(trackedFile.id) as
+          | { store_content: string | null; target_content: string | null }
+          | undefined;
+        if (
+          pendingConflict?.store_content != null &&
+          pendingConflict.store_content !== storeContent &&
+          pendingConflict.target_content === storeContent
+        ) {
+          // File still has the local content, remote content not yet applied — keep conflict
+          conflictPreserved = true;
+        }
+      }
+
+      if (conflictPreserved) {
+        // Keep sync_status as 'conflict' but update checksums so we don't re-enter
+        const mtime = await getFileMtime(storeFilePath);
+        this.db
+          .prepare(
+            `UPDATE tracked_files SET
+              store_checksum = ?, target_checksum = ?,
+              store_mtime = ?, target_mtime = ?
+            WHERE id = ?`,
+          )
+          .run(checksum, checksum, mtime, mtime, trackedFile.id);
+        return;
+      }
+
       const changed =
         checksum !== trackedFile.storeChecksum ||
         checksum !== trackedFile.targetChecksum ||
@@ -560,7 +718,6 @@ export class SyncEngine {
       }
 
       // Auto-resolve any pending conflicts now that both sides match
-      const hadConflict = this.hasConflict(trackedFile.id);
       this.autoClearConflict(trackedFile.id);
 
       if (changed || hadConflict) {
@@ -581,7 +738,34 @@ export class SyncEngine {
     // Files differ — use git 3-way merge to determine direction
     // Ensure store git is committed so HEAD reflects latest state
     // (prevents false conflicts when a prior autoCommitStore silently failed)
-    await ensureStoreCommitted();
+    const mergeConflicts = await ensureStoreCommitted();
+    // Always keep HEAD tracker in sync after our own commits, even during
+    // syncAfterPull (baseCommitOverride set). This prevents
+    // checkForExternalHeadChange from detecting our own commits as "external"
+    // and spuriously re-triggering syncAfterPull.
+    this.lastKnownHead = await getHeadCommitHash();
+
+    // If ensureStoreCommitted detected merge conflicts (e.g. from manual git pull),
+    // it aborted the merge and returned conflict info. Check if this file is affected.
+    if (mergeConflicts.length > 0) {
+      await this.handleMergeConflicts(mergeConflicts);
+      // After abort, store file reverted to pre-merge state (== target) — re-read & re-check
+      const storeAfterAbort = await fs.readFile(storeFilePath, 'utf-8');
+      if (storeAfterAbort === targetContent) {
+        // Files now match after abort — just update checksums
+        const checksum = contentChecksum(storeAfterAbort);
+        this.db
+          .prepare(
+            `UPDATE tracked_files SET
+              store_checksum = ?, target_checksum = ?,
+              sync_status = 'conflict', last_synced_at = datetime('now')
+            WHERE id = ?`,
+          )
+          .run(checksum, checksum, trackedFile.id);
+      }
+      return;
+    }
+
     // Get the "base" version: last committed state in store git repo
     const storeGitRelative = getStoreGitRelativePath(target, trackedFile.relativePath);
 
@@ -611,6 +795,25 @@ export class SyncEngine {
     const targetChanged = targetContent !== baseContent;
 
     if (storeChanged && !targetChanged) {
+      // If store content has conflict markers (from a git merge that "succeeded"
+      // but left markers), create a conflict record instead of blindly syncing.
+      // This happens when git pull auto-merges but keeps both sides in the file.
+      if (this.baseCommitOverride && hasConflictMarkers(storeContent)) {
+        const { ours, theirs } = parseConflictMarkerSides(storeContent);
+        // Revert store to the clean pre-merge state (target content)
+        await fs.writeFile(storeFilePath, targetContent, 'utf-8');
+        this.watcher.markSelfChange(storeFilePath);
+        await this.createConflictFromMergeMarkers(
+          trackedFile,
+          target,
+          storeFilePath,
+          ours,
+          theirs,
+          storeContent,
+        );
+        return;
+      }
+
       // Only store changed — sync store -> target
       await this.syncToTarget(storeFilePath, targetFilePath, storeContent, trackedFile, target);
       return;
@@ -1029,6 +1232,212 @@ export class SyncEngine {
     this.autoCommitStore(`Sync ${trackedFile.relativePath} from ${target.name}`);
   }
 
+  /**
+   * Handle merge conflicts detected during pull or by ensureStoreCommitted.
+   * Creates conflict records so users can resolve them in the UI.
+   * For pull conflicts: the merge was completed with "ours" (local content)
+   * so the store file on disk has the local version.
+   * For ensureStoreCommitted: the merge was aborted, restoring pre-merge state.
+   */
+  async handleMergeConflicts(conflicts: MergeConflictInfo[]): Promise<void> {
+    for (const { filePath, ours, theirs } of conflicts) {
+      // Map store-relative path to tracked file
+      // filePath is like "repos/my-project/CLAUDE.md" or "services/claude-code/settings.json"
+      let trackedFile: TrackedFile | undefined;
+      let target: SyncTarget | undefined;
+      let storeFilePath: string | undefined;
+      let targetFilePath: string | undefined;
+
+      if (filePath.startsWith('repos/')) {
+        const withoutPrefix = filePath.replace(/^repos\//, '');
+        const slashIdx = withoutPrefix.indexOf('/');
+        if (slashIdx === -1) continue;
+        const storeName = withoutPrefix.substring(0, slashIdx);
+        const fileRelative = withoutPrefix.substring(slashIdx + 1);
+
+        const repo = mapRow<Repo>(
+          this.db.prepare('SELECT * FROM repos WHERE store_path = ?').get(`repos/${storeName}`),
+        );
+        if (!repo) continue;
+
+        trackedFile = mapRow<TrackedFile>(
+          this.db
+            .prepare('SELECT * FROM tracked_files WHERE repo_id = ? AND relative_path = ?')
+            .get(repo.id, fileRelative),
+        );
+        if (!trackedFile) continue;
+
+        target = repoToSyncTarget(repo);
+        storeFilePath = path.join(config.storeReposPath, storeName, fileRelative);
+        targetFilePath = path.join(repo.localPath, fileRelative);
+      } else if (filePath.startsWith('services/')) {
+        const withoutPrefix = filePath.replace(/^services\//, '');
+        const slashIdx = withoutPrefix.indexOf('/');
+        if (slashIdx === -1) continue;
+        const storeName = withoutPrefix.substring(0, slashIdx);
+        const fileRelative = withoutPrefix.substring(slashIdx + 1);
+
+        const svc = mapRow<ServiceConfig>(
+          this.db
+            .prepare('SELECT * FROM service_configs WHERE store_path = ?')
+            .get(`services/${storeName}`),
+        );
+        if (!svc) continue;
+
+        trackedFile = mapRow<TrackedFile>(
+          this.db
+            .prepare(
+              'SELECT * FROM tracked_files WHERE service_config_id = ? AND relative_path = ?',
+            )
+            .get(svc.id, fileRelative),
+        );
+        if (!trackedFile) continue;
+
+        target = serviceToSyncTarget(svc);
+        storeFilePath = path.join(config.storeServicesPath, storeName, fileRelative);
+        targetFilePath = path.join(svc.localPath, fileRelative);
+      }
+
+      if (!trackedFile || !target || !storeFilePath || !targetFilePath) continue;
+      if (this.hasConflict(trackedFile.id)) continue;
+
+      // Mark store file as self-change so the watcher ignores the revert
+      // that happens when git merge --abort restores the pre-merge state.
+      // Without this, the watcher would trigger syncFile which would see
+      // store == target and auto-clear the conflict we're about to create.
+      this.watcher.markSelfChange(storeFilePath);
+
+      // Use "ours" as base since it's what both store and target currently have
+      // "theirs" is the incoming remote content that conflicts
+      // Write theirs as store_content so UI shows: local (target) vs remote (store)
+      const conflictId = uuid();
+      this.db
+        .prepare(
+          `INSERT INTO conflicts (id, tracked_file_id, store_content, target_content, base_content, merged_content, store_checksum, target_checksum, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        )
+        .run(
+          conflictId,
+          trackedFile.id,
+          theirs, // "store" side = remote content (what was pulled)
+          ours, // "target" side = local content (what was here before)
+          ours, // base = local content (common ancestor approximation)
+          null,
+          trackedFile.storeChecksum || '',
+          trackedFile.targetChecksum || '',
+        );
+
+      this.db
+        .prepare("UPDATE tracked_files SET sync_status = 'conflict' WHERE id = ?")
+        .run(trackedFile.id);
+
+      this.broadcast({
+        type: 'conflict_created',
+        conflict: {
+          id: conflictId,
+          trackedFileId: trackedFile.id,
+          storeContent: theirs,
+          targetContent: ours,
+          baseContent: ours,
+          mergedContent: null,
+          storeChecksum: trackedFile.storeChecksum || '',
+          targetChecksum: trackedFile.targetChecksum || '',
+          status: 'pending',
+          resolvedAt: null,
+          createdAt: new Date().toISOString(),
+          ...(target.type === 'repo'
+            ? { repoId: target.id, repoName: target.name, serviceId: null, serviceName: null }
+            : { repoId: null, repoName: null, serviceId: target.id, serviceName: target.name }),
+          relativePath: trackedFile.relativePath,
+        },
+      });
+
+      this.logSync(
+        target.id,
+        trackedFile.relativePath,
+        'conflict_created',
+        'Merge conflict from external git pull',
+      );
+    }
+  }
+
+  /**
+   * Create a conflict record when a git merge left conflict markers in a file.
+   * This happens when git pull auto-merges "successfully" but the result
+   * still contains <<<<<<</>>>>>>  markers.
+   * Reverts the file on disk to clean local content and stores both sides
+   * in the conflict record for the user to resolve in the UI.
+   */
+  private async createConflictFromMergeMarkers(
+    trackedFile: TrackedFile,
+    target: SyncTarget,
+    storeFilePath: string,
+    ours: string,
+    theirs: string,
+    mergedContent: string,
+  ): Promise<void> {
+    if (this.hasConflict(trackedFile.id)) return;
+
+    const storeChecksum = contentChecksum(theirs);
+    const targetChecksum = contentChecksum(ours);
+    const mtime = await getFileMtime(storeFilePath);
+
+    this.db
+      .prepare(
+        'UPDATE tracked_files SET store_checksum = ?, target_checksum = ?, store_mtime = ?, target_mtime = ? WHERE id = ?',
+      )
+      .run(storeChecksum, targetChecksum, mtime, mtime, trackedFile.id);
+
+    const conflictId = uuid();
+    this.db
+      .prepare(
+        `INSERT INTO conflicts (id, tracked_file_id, store_content, target_content, base_content, merged_content, store_checksum, target_checksum, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      )
+      .run(
+        conflictId,
+        trackedFile.id,
+        theirs, // remote content → shown as "Store" in UI
+        ours, // local content → shown as "Target" in UI
+        ours, // base = pre-merge local state
+        mergedContent, // merged content with markers for reference
+        storeChecksum,
+        targetChecksum,
+      );
+
+    this.db
+      .prepare("UPDATE tracked_files SET sync_status = 'conflict' WHERE id = ?")
+      .run(trackedFile.id);
+
+    this.broadcast({
+      type: 'conflict_created',
+      conflict: {
+        id: conflictId,
+        trackedFileId: trackedFile.id,
+        storeContent: theirs,
+        targetContent: ours,
+        baseContent: ours,
+        mergedContent,
+        storeChecksum,
+        targetChecksum,
+        status: 'pending',
+        resolvedAt: null,
+        createdAt: new Date().toISOString(),
+        ...(target.type === 'repo'
+          ? { repoId: target.id, repoName: target.name, serviceId: null, serviceName: null }
+          : { repoId: null, repoName: null, serviceId: target.id, serviceName: target.name }),
+        relativePath: trackedFile.relativePath,
+      },
+    });
+
+    this.logSync(
+      target.id,
+      trackedFile.relativePath,
+      'conflict_created',
+      'Git merge left conflict markers in file',
+    );
+  }
+
   private hasConflict(trackedFileId: string): boolean {
     return !!this.db
       .prepare("SELECT id FROM conflicts WHERE tracked_file_id = ? AND status = 'pending'")
@@ -1358,18 +1767,57 @@ export class SyncEngine {
   }
 
   /**
+   * Suppress watcher-triggered syncs. Call before starting git pull
+   * so watcher events from file changes during pull are ignored.
+   */
+  enterPullMode(): void {
+    this.pullSyncInProgress = true;
+  }
+
+  /**
+   * Release pull mode without running a sync pass.
+   * Used when pull had no changes or failed.
+   */
+  leavePullMode(): void {
+    this.watcher.clearStoreDebounceTimers();
+    this.pullCompletedAt = Date.now();
+    this.pullSyncInProgress = false;
+  }
+
+  /**
    * Run a full sync pass using a specific commit as the base reference.
    * Used after git pull to correctly detect which side changed:
    * the pre-pull HEAD is the correct base, not the post-pull HEAD.
+   *
+   * During this pass:
+   * - Watcher-triggered syncs are suppressed (we handle all files here)
+   * - Per-file auto-commits are suppressed (one batch commit at the end)
    */
   async syncAfterPull(prePullCommitHash: string): Promise<void> {
     this.baseCommitOverride = prePullCommitHash;
+    this.pullSyncInProgress = true;
     try {
       await this.syncAllRepos();
       await this.syncAllServices();
     } finally {
+      // Clear any pending store watcher debounce timers BEFORE releasing the flag.
+      // git pull modifies store files on disk, causing chokidar to queue debounced
+      // events. If those fire after we clear pullSyncInProgress, they'd run syncFile
+      // with the post-pull HEAD as base — which incorrectly sees "only target changed"
+      // and syncs the old target content back to the store, undoing the pull.
+      this.watcher.clearStoreDebounceTimers();
+      this.pullCompletedAt = Date.now();
+      this.pullSyncInProgress = false;
       this.baseCommitOverride = null;
     }
+    // Commit synchronously (not debounced) so HEAD is up-to-date before
+    // we capture lastKnownHead. Using queueStoreCommit here would leave
+    // lastKnownHead stale until the 2s debounce fires, causing
+    // checkForExternalHeadChange to spuriously re-trigger syncAfterPull.
+    await commitStoreChanges('Sync after pull');
+
+    // Update tracked HEAD so subsequent syncs don't re-trigger this path
+    this.lastKnownHead = await getHeadCommitHash();
   }
 
   private async scanAllServicesForNewFiles(services?: ServiceConfig[]): Promise<void> {
@@ -1480,6 +1928,10 @@ export class SyncEngine {
   }
 
   private autoCommitStore(message: string): void {
+    // During post-pull sync, skip per-file commits — a single batch commit
+    // is made at the end of syncAfterPull() to avoid noisy commit history
+    if (this.pullSyncInProgress) return;
+
     const autoCommit = this.db
       .prepare("SELECT value FROM settings WHERE key = 'auto_commit_store'")
       .get() as { value: string } | undefined;

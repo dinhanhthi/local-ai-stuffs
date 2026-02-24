@@ -26,6 +26,8 @@ When both sides changed:
 
 A checksum fast-path ensures git is only invoked when files actually differ, keeping the common case fast.
 
+> **Important:** When both local and remote have changes to the same file, always use the **Pull button in the UI** instead of running `git pull` in the terminal. The UI handles merge conflicts properly by completing the merge and creating conflict records for you to resolve. A terminal `git pull` leaves the merge in an unfinished state, and the sync engine will abort it — losing the remote changes.
+
 ## Multi-Machine Support
 
 When multiple machines share the same store repository (data directory) via git, each machine may have different absolute paths for the same repository (e.g., `/Users/thi/git/project` on a Mac vs `/home/thi/code/project` on Linux).
@@ -200,6 +202,8 @@ When a conflict is detected, there are:
 
 You can choose to keep the store version, the target version, or the merged result, just like when you handle the conflicts in git.
 
+> **Important:** Pull-related conflicts (when remote and local both changed the same file) are only handled correctly through the **Pull button in the UI**. If you run `git pull` in the terminal and it results in a merge conflict, the sync engine will abort the merge and the remote changes will be lost. Always use the UI Pull button when you expect conflicts.
+
 ## Cloning Files to Other Repos
 
 You can copy files or folders from one repository to others directly from the file tree:
@@ -250,6 +254,8 @@ Use the **Pull** button to pull the latest changes from the remote. After pullin
 - **Only remote changed** — updates are applied to local targets automatically
 - **Only local changed** — local changes are preserved and pushed back to the store
 - **Both changed** — non-overlapping edits are auto-merged; overlapping edits create a conflict for manual resolution
+
+> **Important:** Always use the **Pull button in the UI** instead of running `git pull` directly in the terminal. When both local and remote have modified the same file, a terminal `git pull` leaves an unfinished merge that the sync engine will abort — causing remote changes to be lost. The UI Pull button handles this correctly by completing the merge and creating conflict records for you to resolve.
 
 ## Setting Up on a New Machine
 

@@ -27,15 +27,22 @@ async function refreshConflictContent(
   const storeFilePath = safeJoin(storeBasePath, conflict.relativePath);
   const targetFilePath = safeJoin(conflict.localPath, conflict.relativePath);
 
-  try {
-    conflict.storeContent = await fs.readFile(storeFilePath, 'utf-8');
-  } catch {
-    // File may have been deleted
+  // Only refresh content from disk if the conflict record doesn't already
+  // have stored content. Merge-abort conflicts store the ours/theirs content
+  // directly in the DB because the on-disk files revert to pre-merge state.
+  if (conflict.storeContent == null) {
+    try {
+      conflict.storeContent = await fs.readFile(storeFilePath, 'utf-8');
+    } catch {
+      // File may have been deleted
+    }
   }
-  try {
-    conflict.targetContent = await fs.readFile(targetFilePath, 'utf-8');
-  } catch {
-    // File may have been deleted
+  if (conflict.targetContent == null) {
+    try {
+      conflict.targetContent = await fs.readFile(targetFilePath, 'utf-8');
+    } catch {
+      // File may have been deleted
+    }
   }
 
   // Strip extra fields before returning

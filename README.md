@@ -6,6 +6,9 @@
 
 Centralized management tool for AI configuration files (`CLAUDE.md`, `.cursor/`, `GEMINI.md`, `.github/copilot-instructions.md`, etc.) across Git repositories and local AI services. Keep files synced across all your repos, and sync local AI service configs (e.g., `~/.claude/` for Claude Code) — all without committing them.
 
+> [!WARNING]  
+> This repository is in heavy development, use at your own risk.
+
 ## How it works
 
 - A **central store** (a separate git repo you choose) holds all AI config files, organized by repository and service

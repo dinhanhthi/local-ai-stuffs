@@ -27,19 +27,42 @@ export function registerSyncRoutes(app: FastifyInstance, state: AppState): void 
   app.post('/api/store/pull', async (_req, reply) => {
     if (!state.db) return reply.code(503).send({ error: 'Not configured' });
 
+    // Suppress watcher events during pull to prevent races where
+    // watcher-triggered syncs run before conflict resolution completes
+    state.syncEngine?.enterPullMode();
+
     try {
       const result = await pullStoreChanges();
 
-      // After a successful pull, trigger sync using the pre-pull base
-      // so the engine correctly detects remote changes vs local changes
-      if (result.pulled && result.prePullCommitHash && state.syncEngine) {
+      // If there are repo/service file conflicts from the merge, create
+      // conflict records so the user can resolve them in the UI.
+      // The merge was completed with "ours" for conflicted files, so
+      // syncAfterPull will handle non-conflicting changes normally.
+      if (result.repoFileConflicts && result.repoFileConflicts.length > 0 && state.syncEngine) {
+        await state.syncEngine.handleMergeConflicts(result.repoFileConflicts);
+
+        // Merge was completed (not aborted) — sync non-conflicting files
+        if (result.prePullCommitHash) {
+          state.syncEngine.syncAfterPull(result.prePullCommitHash).catch((err) => {
+            console.error('Post-pull sync failed:', err);
+          });
+        } else {
+          state.syncEngine.leavePullMode();
+        }
+      } else if (result.pulled && result.prePullCommitHash && state.syncEngine) {
+        // No conflicts — trigger normal sync using the pre-pull base
+        // so the engine correctly detects remote changes vs local changes.
+        // syncAfterPull handles releasing pull mode in its finally block.
         state.syncEngine.syncAfterPull(result.prePullCommitHash).catch((err) => {
           console.error('Post-pull sync failed:', err);
         });
+      } else {
+        state.syncEngine?.leavePullMode();
       }
 
       return result;
     } catch (err) {
+      state.syncEngine?.leavePullMode();
       const message = err instanceof Error ? err.message : 'Pull failed';
       return reply.code(500).send({ error: message });
     }

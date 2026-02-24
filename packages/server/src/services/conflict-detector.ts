@@ -171,35 +171,46 @@ export async function resolveConflict(
 
   switch (resolution) {
     case 'keep_store': {
-      // If store file was deleted, "keep store" means delete both sides
-      let storeExists = true;
-      try {
-        await fs.access(storeFilePath);
-      } catch {
-        storeExists = false;
-      }
-      if (storeExists) {
-        content = await fs.readFile(storeFilePath, 'utf-8');
+      // Prefer stored content from the conflict record — for merge-abort conflicts
+      // the on-disk store file has reverted to pre-merge (local) state, so reading
+      // from disk would give us the wrong content.
+      if (conflict.store_content != null) {
+        content = conflict.store_content;
       } else {
-        content = '';
-        deleted = true;
+        let storeExists = true;
+        try {
+          await fs.access(storeFilePath);
+        } catch {
+          storeExists = false;
+        }
+        if (storeExists) {
+          content = await fs.readFile(storeFilePath, 'utf-8');
+        } else {
+          content = '';
+          deleted = true;
+        }
       }
       resolvedStatus = 'resolved_store';
       break;
     }
     case 'keep_target': {
-      // If target file was deleted, "keep target" means delete both sides
-      let targetExists = true;
-      try {
-        await fs.access(targetFilePath);
-      } catch {
-        targetExists = false;
-      }
-      if (targetExists) {
-        content = await fs.readFile(targetFilePath, 'utf-8');
+      // Prefer stored content from the conflict record — for merge-abort conflicts
+      // the content is already captured at conflict creation time.
+      if (conflict.target_content != null) {
+        content = conflict.target_content;
       } else {
-        content = '';
-        deleted = true;
+        let targetExists = true;
+        try {
+          await fs.access(targetFilePath);
+        } catch {
+          targetExists = false;
+        }
+        if (targetExists) {
+          content = await fs.readFile(targetFilePath, 'utf-8');
+        } else {
+          content = '';
+          deleted = true;
+        }
       }
       resolvedStatus = 'resolved_target';
       break;

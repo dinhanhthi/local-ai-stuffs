@@ -56,6 +56,16 @@ export class FileWatcherService extends EventEmitter {
     return true;
   }
 
+  /**
+   * Clear all pending debounce timers for store-related changes.
+   * Used after syncAfterPull to prevent stale watcher events from
+   * firing with incorrect base references.
+   */
+  clearStoreDebounceTimers(): void {
+    this.clearDebounceTimersForPrefix('store:');
+    this.clearDebounceTimersForPrefix('serviceStore:');
+  }
+
   private clearDebounceTimersForPrefix(prefix: string): void {
     for (const [key, timer] of this.debounceTimers) {
       if (key.startsWith(prefix)) {

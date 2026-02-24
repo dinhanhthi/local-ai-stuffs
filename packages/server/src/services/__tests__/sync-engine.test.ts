@@ -18,9 +18,11 @@ let mockBaseContentAt: string | null = null;
 
 vi.mock('../store-git.js', () => ({
   queueStoreCommit: vi.fn(),
-  ensureStoreCommitted: vi.fn().mockResolvedValue(undefined),
+  commitStoreChanges: vi.fn().mockResolvedValue(undefined),
+  ensureStoreCommitted: vi.fn().mockResolvedValue([]),
   getCommittedContent: vi.fn(async () => mockBaseContent),
   getCommittedContentAt: vi.fn(async () => mockBaseContentAt),
+  getHeadCommitHash: vi.fn().mockResolvedValue('mock-head-hash'),
   gitMergeFile: vi.fn(async (base: string, store: string, target: string) => {
     // Use real git merge-file via child_process
     const { execFile } = await import('node:child_process');
@@ -78,6 +80,7 @@ vi.mock('../file-watcher.js', async () => {
     startServiceStoreWatcher = vi.fn().mockResolvedValue(undefined);
     startServiceTargetWatcher = vi.fn().mockResolvedValue(undefined);
     stopServiceTargetWatcher = vi.fn().mockResolvedValue(undefined);
+    clearStoreDebounceTimers = vi.fn();
     stopAll = vi.fn().mockResolvedValue(undefined);
   }
   return { FileWatcherService: MockFileWatcherService };
@@ -1238,5 +1241,78 @@ describe('SyncEngine.syncAfterPull — post-pull base resolution', () => {
 
     expect(storeGitMod.getCommittedContent).toHaveBeenCalled();
     expect(storeGitMod.getCommittedContentAt).not.toHaveBeenCalled();
+  });
+
+  // ╔═══════════════════════════════════════════════════════════════════════╗
+  // ║  Scenario: Per-file auto-commits suppressed during pull sync        ║
+  // ╚═══════════════════════════════════════════════════════════════════════╝
+  it('suppresses per-file auto-commits during syncAfterPull', async () => {
+    const storeGitMod = await import('../store-git.js');
+
+    // Store changed (pulled), target unchanged → store→target sync
+    setBaseAt('Original');
+    await writeStoreFile('Pulled content');
+    await writeTargetFile('Original');
+
+    const checksum = contentChecksum('Original');
+    const tf = makeTrackedFile({
+      storeChecksum: checksum,
+      targetChecksum: checksum,
+      lastSyncedAt: new Date().toISOString(),
+    });
+    db.prepare(
+      "INSERT INTO tracked_files (id, repo_id, relative_path, store_checksum, target_checksum, sync_status, last_synced_at) VALUES (?, ?, ?, ?, ?, 'synced', ?)",
+    ).run(tf.id, tf.repoId, tf.relativePath, tf.storeChecksum, tf.targetChecksum, tf.lastSyncedAt);
+
+    vi.mocked(storeGitMod.commitStoreChanges).mockClear();
+    vi.mocked(storeGitMod.queueStoreCommit).mockClear();
+
+    await engine.syncAfterPull('fake-pre-pull-hash');
+
+    // Should use synchronous commitStoreChanges (not debounced queueStoreCommit)
+    // to prevent checkForExternalHeadChange from detecting stale lastKnownHead
+    const syncCommitCalls = vi.mocked(storeGitMod.commitStoreChanges).mock.calls;
+    expect(syncCommitCalls).toHaveLength(1);
+    expect(syncCommitCalls[0][0]).toBe('Sync after pull');
+
+    // Per-file commits via queueStoreCommit should NOT be called
+    const queueCalls = vi.mocked(storeGitMod.queueStoreCommit).mock.calls;
+    expect(queueCalls).toHaveLength(0);
+
+    // Verify the file was actually synced
+    const targetContent = await readTargetFile();
+    expect(targetContent).toBe('Pulled content');
+  });
+
+  // ╔═══════════════════════════════════════════════════════════════════════╗
+  // ║  Scenario: Batch commit captures target→store changes after pull    ║
+  // ╚═══════════════════════════════════════════════════════════════════════╝
+  it('batch commits target→store changes made during pull sync', async () => {
+    const storeGitMod = await import('../store-git.js');
+
+    // Both changed → conflict (target content goes to store via conflict flow)
+    setBaseAt('Original');
+    await writeStoreFile('Remote edit');
+    await writeTargetFile('Local edit');
+
+    const checksum = contentChecksum('Original');
+    const tf = makeTrackedFile({
+      storeChecksum: checksum,
+      targetChecksum: checksum,
+      lastSyncedAt: new Date().toISOString(),
+    });
+    db.prepare(
+      "INSERT INTO tracked_files (id, repo_id, relative_path, store_checksum, target_checksum, sync_status, last_synced_at) VALUES (?, ?, ?, ?, ?, 'synced', ?)",
+    ).run(tf.id, tf.repoId, tf.relativePath, tf.storeChecksum, tf.targetChecksum, tf.lastSyncedAt);
+
+    vi.mocked(storeGitMod.commitStoreChanges).mockClear();
+    vi.mocked(storeGitMod.queueStoreCommit).mockClear();
+
+    await engine.syncAfterPull('fake-pre-pull-hash');
+
+    // Should use synchronous commitStoreChanges at end
+    const syncCommitCalls = vi.mocked(storeGitMod.commitStoreChanges).mock.calls;
+    expect(syncCommitCalls).toHaveLength(1);
+    expect(syncCommitCalls[0][0]).toBe('Sync after pull');
   });
 });

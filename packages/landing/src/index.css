@@ -115,7 +115,7 @@
 
   strong {
     font-weight: 600;
-    color: var(--foreground);
+    color: oklch(0.75 0.15 250);
   }
 
   ul,

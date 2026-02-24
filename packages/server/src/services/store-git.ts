@@ -207,6 +207,8 @@ export interface PullResult {
   pulled: boolean;
   message: string;
   storeConflicts?: StoreConfigConflict[];
+  /** Repo/service file conflicts from the pull (ours=local, theirs=remote) */
+  repoFileConflicts?: MergeConflictInfo[];
   prePullCommitHash?: string;
 }
 
@@ -258,42 +260,89 @@ export async function pullStoreChanges(): Promise<PullResult> {
   const prePullHash = await getHeadCommitHash();
 
   try {
-    await git.pull(remote, branch.current);
+    await git.pull(remote, branch.current, { '--no-rebase': null });
   } catch (err) {
     // If git pull itself throws (e.g. merge conflict), check status for conflicted files
     const status = await git.status();
     const conflictedPaths = status.conflicted;
 
+    if (conflictedPaths.length === 0) {
+      // No conflicts — this is a different error (network, auth, etc.)
+      throw err;
+    }
+
     const knownConfigFiles = ['sync-settings.json', 'machines.json'] as const;
     const storeConflicts: StoreConfigConflict[] = [];
+    const repoFileConflicts: string[] = [];
 
     for (const filePath of conflictedPaths) {
       const basename = path.basename(filePath) as (typeof knownConfigFiles)[number];
-      if (!knownConfigFiles.includes(basename)) continue;
-
-      const fullPath = path.join(config.storePath, filePath);
-      let content = '';
-      try {
-        content = await fs.readFile(fullPath, 'utf-8');
-      } catch {
-        continue;
+      if (knownConfigFiles.includes(basename)) {
+        const fullPath = path.join(config.storePath, filePath);
+        let content = '';
+        try {
+          content = await fs.readFile(fullPath, 'utf-8');
+        } catch {
+          continue;
+        }
+        const { ours, theirs } = parseConflictSides(content);
+        storeConflicts.push({ file: basename, content, ours, theirs });
+      } else {
+        repoFileConflicts.push(filePath);
       }
+    }
 
-      const { ours, theirs } = parseConflictSides(content);
-      storeConflicts.push({ file: basename, content, ours, theirs });
+    // For repo/service AI files, parse conflict markers and collect both sides.
+    const parsedRepoConflicts: MergeConflictInfo[] = [];
+    for (const filePath of repoFileConflicts) {
+      const fullPath = path.join(config.storePath, filePath);
+      try {
+        const content = await fs.readFile(fullPath, 'utf-8');
+        const { ours, theirs } = parseConflictSides(content);
+        parsedRepoConflicts.push({ filePath, ours, theirs });
+      } catch {
+        // File might not be readable
+      }
     }
 
     if (storeConflicts.length > 0) {
-      return {
+      // Config file conflicts (sync-settings.json, machines.json) need user
+      // resolution before we can proceed — abort the entire merge so the UI
+      // can present the config conflict dialog.
+      await git.merge(['--abort']);
+
+      const result: PullResult = {
         pulled: true,
-        message: `Pulled from ${remote}/${branch.current} with config conflicts`,
-        storeConflicts,
+        message: `Pulled from ${remote}/${branch.current} with conflicts`,
         prePullCommitHash: prePullHash ?? undefined,
+        storeConflicts,
       };
+      if (parsedRepoConflicts.length > 0) {
+        result.repoFileConflicts = parsedRepoConflicts;
+      }
+      return result;
     }
 
-    // Re-throw if no config conflicts (other errors like network issues)
-    throw err;
+    // Only repo/service file conflicts — resolve them with "ours" (local
+    // content) to complete the merge commit, then let the sync engine create
+    // conflict records for the user to resolve in the UI. This way remote
+    // changes for non-conflicting files are properly integrated, and pulling
+    // again after resolution won't re-create the same conflicts.
+    for (const filePath of repoFileConflicts) {
+      await git.raw(['checkout', '--ours', '--', filePath]);
+      await git.add(filePath);
+    }
+    await git.commit('Auto-resolve pull conflicts (accept local for conflicted files)');
+
+    const result: PullResult = {
+      pulled: true,
+      message: `Pulled from ${remote}/${branch.current} with conflicts`,
+      prePullCommitHash: prePullHash ?? undefined,
+    };
+    if (parsedRepoConflicts.length > 0) {
+      result.repoFileConflicts = parsedRepoConflicts;
+    }
+    return result;
   }
 
   return {
@@ -416,12 +465,25 @@ export async function getHeadCommitHash(): Promise<string | null> {
   }
 }
 
+export interface MergeConflictInfo {
+  /** Store-relative path (e.g. "repos/my-project/CLAUDE.md") */
+  filePath: string;
+  /** Content from "ours" (local HEAD) side */
+  ours: string;
+  /** Content from "theirs" (remote/incoming) side */
+  theirs: string;
+}
+
 /**
  * Ensure all store changes are committed before using git for comparison.
  * This prevents stale HEAD when files were written but not yet committed.
  * Flushes any pending batched commits first.
+ *
+ * If a merge is in progress with unresolved conflicts (e.g. from manual git pull),
+ * aborts the merge and returns the conflict info so the caller can create
+ * proper conflict records for the user to resolve.
  */
-export async function ensureStoreCommitted(): Promise<void> {
+export async function ensureStoreCommitted(): Promise<MergeConflictInfo[]> {
   // Flush any queued batched messages first
   await flushPendingCommits();
 
@@ -429,10 +491,32 @@ export async function ensureStoreCommitted(): Promise<void> {
     git = createGit(config.storePath);
   }
   const status = await git.status();
+
+  // If there are unresolved merge conflicts (e.g. from a manual git pull),
+  // collect conflict info, then abort the merge so HEAD stays clean.
+  // The caller will create conflict records for the user to resolve.
+  if (status.conflicted.length > 0) {
+    const conflicts: MergeConflictInfo[] = [];
+    for (const filePath of status.conflicted) {
+      const fullPath = path.join(config.storePath, filePath);
+      try {
+        const content = await fs.readFile(fullPath, 'utf-8');
+        const { ours, theirs } = parseConflictSides(content);
+        conflicts.push({ filePath, ours, theirs });
+      } catch {
+        // File might not be readable
+      }
+    }
+    // Abort the merge to restore pre-merge state
+    await git.merge(['--abort']);
+    return conflicts;
+  }
+
   if (status.files.length > 0) {
     await git.add('.');
     await git.commit('Auto-commit before sync comparison');
   }
+  return [];
 }
 
 /**
