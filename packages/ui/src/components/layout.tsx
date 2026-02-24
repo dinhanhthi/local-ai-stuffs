@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import {
-  BookOpen,
   Database,
   FileText,
   FolderSearch2,
@@ -23,7 +22,6 @@ import { useMachine } from '@/hooks/use-machines';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: Database },
   { to: '/templates', label: 'Templates', icon: FileText },
-  { to: '/docs', label: 'Docs', icon: BookOpen },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -46,12 +46,6 @@ export default defineConfig({
             'codemirror',
             '@uiw/react-codemirror',
           ],
-          'vendor-markdown': [
-            'react-markdown',
-            'remark-gfm',
-            'rehype-slug',
-            'rehype-autolink-headings',
-          ],
           'vendor-radix': [
             '@radix-ui/react-alert-dialog',
             '@radix-ui/react-context-menu',

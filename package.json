@@ -13,6 +13,8 @@
     "start": "node packages/server/dist/index.js",
     "dev:server": "pnpm --filter @ai-sync/server dev",
     "dev:ui": "pnpm --filter @ai-sync/ui dev",
+    "dev:landing": "pnpm --filter @ai-sync/landing dev",
+    "build:landing": "pnpm --filter @ai-sync/landing build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm --filter @ai-sync/server test",

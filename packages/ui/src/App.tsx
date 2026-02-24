@@ -20,8 +20,6 @@ const TemplatesPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('@/pages/settings').then((m) => ({ default: m.SettingsPage })),
 );
-const DocsPage = lazy(() => import('@/pages/docs').then((m) => ({ default: m.DocsPage })));
-
 export default function App() {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [dataDir, setDataDir] = useState<string>();
@@ -75,7 +73,6 @@ export default function App() {
             <Route path="/repos/:id" element={<RepoDetailPage />} />
             <Route path="/services/:id" element={<ServiceDetailPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
-            <Route path="/docs" element={<DocsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </Suspense>
