@@ -378,6 +378,7 @@ export const api = {
   },
 
   store: {
+    pull: () => request<{ pulled: boolean; message: string }>('/store/pull', { method: 'POST' }),
     push: () => request<{ pushed: boolean; message: string }>('/store/push', { method: 'POST' }),
     remote: () => request<{ url: string | null }>('/store/remote'),
   },

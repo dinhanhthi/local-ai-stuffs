@@ -168,19 +168,54 @@ export function cancelPendingCommitTimer(): void {
   }
 }
 
-export async function pushStoreChanges(): Promise<{ pushed: boolean; message: string }> {
+/**
+ * Resolve the remote name for the current branch.
+ * Checks branch tracking config first, then falls back to the first available remote.
+ */
+async function resolveRemote(): Promise<string | null> {
   if (!git) {
     git = createGit(config.storePath);
   }
-
   const remotes = await git.getRemotes();
-  if (remotes.length === 0) {
+  if (remotes.length === 0) return null;
+
+  // Prefer the remote tracked by the current branch
+  try {
+    const branch = await git.branchLocal();
+    const trackingRemote = await git
+      .raw(['config', `branch.${branch.current}.remote`])
+      .then((r) => r.trim());
+    if (trackingRemote && remotes.some((r) => r.name === trackingRemote)) {
+      return trackingRemote;
+    }
+  } catch {
+    // No tracking config — fall through
+  }
+
+  // Fall back to 'origin' if it exists, otherwise use the first remote
+  return remotes.find((r) => r.name === 'origin')?.name ?? remotes[0].name;
+}
+
+export async function pullStoreChanges(): Promise<{ pulled: boolean; message: string }> {
+  const remote = await resolveRemote();
+  if (!remote) {
+    return { pulled: false, message: 'No remote configured' };
+  }
+
+  const branch = await git!.branchLocal();
+  await git!.pull(remote, branch.current);
+  return { pulled: true, message: `Pulled from ${remote}/${branch.current}` };
+}
+
+export async function pushStoreChanges(): Promise<{ pushed: boolean; message: string }> {
+  const remote = await resolveRemote();
+  if (!remote) {
     return { pushed: false, message: 'No remote configured' };
   }
 
-  const branch = await git.branchLocal();
-  await git.push('origin', branch.current);
-  return { pushed: true, message: `Pushed to origin/${branch.current}` };
+  const branch = await git!.branchLocal();
+  await git!.push(remote, branch.current);
+  return { pushed: true, message: `Pushed to ${remote}/${branch.current}` };
 }
 
 export async function getStoreRemoteUrl(): Promise<string | null> {
@@ -188,12 +223,15 @@ export async function getStoreRemoteUrl(): Promise<string | null> {
     git = createGit(config.storePath);
   }
 
+  const remote = await resolveRemote();
+  if (!remote) return null;
+
   const remotes = await git.getRemotes(true);
-  const origin = remotes.find((r) => r.name === 'origin');
-  if (!origin?.refs?.fetch) return null;
+  const match = remotes.find((r) => r.name === remote);
+  if (!match?.refs?.fetch) return null;
 
   // Convert SSH URL to HTTPS URL for browser opening
-  const url = origin.refs.fetch;
+  const url = match.refs.fetch;
   const sshMatch = url.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
   if (sshMatch) {
     return `https://${sshMatch[1]}/${sshMatch[2]}`;

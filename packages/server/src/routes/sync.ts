@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { SyncLogEntry } from '../types/index.js';
 import type { AppState } from '../app-state.js';
 import { mapRows } from '../db/index.js';
-import { pushStoreChanges, getStoreRemoteUrl } from '../services/store-git.js';
+import { pullStoreChanges, pushStoreChanges, getStoreRemoteUrl } from '../services/store-git.js';
 
 interface SyncLogEntryWithRepo extends SyncLogEntry {
   repoName: string | null;
@@ -15,6 +15,19 @@ export function registerSyncRoutes(app: FastifyInstance, state: AppState): void 
 
     await state.syncEngine.syncAllRepos({ force: true });
     return { success: true };
+  });
+
+  // Pull store changes from remote
+  app.post('/api/store/pull', async (_req, reply) => {
+    if (!state.db) return reply.code(503).send({ error: 'Not configured' });
+
+    try {
+      const result = await pullStoreChanges();
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Pull failed';
+      return reply.code(500).send({ error: message });
+    }
   });
 
   // Push store changes to remote

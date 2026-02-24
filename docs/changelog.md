@@ -8,6 +8,7 @@
 - Add landing page with documentation and installation instructions
 - Ask user before modifying `.gitignore` when adding a new repo (opt-in checkbox in Add Repository dialog)
 - Add setting to control file tree default expand/collapse when opening a repo or service (collapsed by default)
+- Add "Pull" changes from the remote.
 
 ## v0.1.4
 

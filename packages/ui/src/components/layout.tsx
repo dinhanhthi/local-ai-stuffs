@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import {
   Database,
+  Download,
   FileText,
   FolderSearch2,
   Globe,
@@ -16,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './confirm-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { UpdateBanner } from './update-banner';
 import { useMachine } from '@/hooks/use-machines';
 
@@ -27,7 +29,9 @@ const navItems = [
 
 export function Layout({ children, dataDir }: { children: React.ReactNode; dataDir?: string }) {
   const location = useLocation();
+  const [pulling, setPulling] = useState(false);
   const [pushing, setPushing] = useState(false);
+  const [pullConfirmOpen, setPullConfirmOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -75,6 +79,22 @@ export function Layout({ children, dataDir }: { children: React.ReactNode; dataD
       window.location.reload();
     } catch {
       setResetting(false);
+    }
+  };
+
+  const handlePull = async () => {
+    setPulling(true);
+    try {
+      const result = await api.store.pull();
+      if (result.pulled) {
+        toast.success(result.message);
+      } else {
+        toast.warning(result.message);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Pull failed');
+    } finally {
+      setPulling(false);
     }
   };
 
@@ -204,20 +224,48 @@ export function Layout({ children, dataDir }: { children: React.ReactNode; dataD
                 <RotateCcw className="h-3 w-3" />
                 <span className="hidden sm:inline">Change</span>
               </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={() => setConfirmOpen(true)}
-                disabled={pushing}
-                title="Push changes to remote"
-              >
-                {pushing ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Upload className="h-3 w-3" />
-                )}
-                <span className="hidden sm:inline">Push changes</span>
-              </Button>
+              {remoteUrl && (
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setPullConfirmOpen(true)}
+                        disabled={pulling}
+                      >
+                        {pulling ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3" />
+                        )}
+                        <span className="hidden sm:inline">Pull</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Pull latest changes from remote repository</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setConfirmOpen(true)}
+                        disabled={pushing}
+                      >
+                        {pushing ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Upload className="h-3 w-3" />
+                        )}
+                        <span className="hidden sm:inline">Push</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Push committed store changes to remote repository
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             <ConfirmDialog
               open={resetOpen}
@@ -230,6 +278,15 @@ export function Layout({ children, dataDir }: { children: React.ReactNode; dataD
           </div>
         </footer>
       )}
+
+      <ConfirmDialog
+        open={pullConfirmOpen}
+        onOpenChange={setPullConfirmOpen}
+        onConfirm={handlePull}
+        title="Pull from remote"
+        description="Pull latest changes from the remote repository? This will merge remote changes into your local store."
+        confirmLabel="Pull"
+      />
 
       <ConfirmDialog
         open={confirmOpen}
