@@ -245,7 +245,11 @@ Untrack patterns are persisted in the local database and in `sync-settings.json`
 
 If your data directory is connected to a remote git repository, use the **Push** button in the footer to push your store to the remote. This backs up your AI configs and makes them available on other machines.
 
-Use the **Pull** button to pull the latest changes from the remote. This will merge the remote changes into your local store.
+Use the **Pull** button to pull the latest changes from the remote. After pulling, the sync engine automatically runs a full sync pass using the **pre-pull state** as the merge base. This correctly detects which files were changed by the remote vs which were changed locally:
+
+- **Only remote changed** — updates are applied to local targets automatically
+- **Only local changed** — local changes are preserved and pushed back to the store
+- **Both changed** — non-overlapping edits are auto-merged; overlapping edits create a conflict for manual resolution
 
 ## Setting Up on a New Machine
 

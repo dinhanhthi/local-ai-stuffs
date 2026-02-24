@@ -29,6 +29,15 @@ export function registerSyncRoutes(app: FastifyInstance, state: AppState): void 
 
     try {
       const result = await pullStoreChanges();
+
+      // After a successful pull, trigger sync using the pre-pull base
+      // so the engine correctly detects remote changes vs local changes
+      if (result.pulled && result.prePullCommitHash && state.syncEngine) {
+        state.syncEngine.syncAfterPull(result.prePullCommitHash).catch((err) => {
+          console.error('Post-pull sync failed:', err);
+        });
+      }
+
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Pull failed';
