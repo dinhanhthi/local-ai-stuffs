@@ -135,13 +135,13 @@ export function registerRepoRoutes(app: FastifyInstance, state: AppState): void 
 
   // Register a new repo
   app.post<{
-    Body: { localPath: string; name?: string; applyTemplate?: boolean };
+    Body: { localPath: string; name?: string; applyTemplate?: boolean; modifyGitignore?: boolean };
   }>('/api/repos', async (req, reply) => {
     if (!state.db || !state.syncEngine) return reply.code(503).send({ error: 'Not configured' });
     const db = state.db;
     const syncEngine = state.syncEngine;
 
-    const { localPath, name, applyTemplate } = req.body;
+    const { localPath, name, applyTemplate, modifyGitignore = false } = req.body;
 
     // Validate path exists
     try {
@@ -284,14 +284,20 @@ export function registerRepoRoutes(app: FastifyInstance, state: AppState): void 
       }
     }
 
-    // Setup gitignore and remove from git tracking
-    const allTrackedPaths = db
-      .prepare('SELECT relative_path FROM tracked_files WHERE repo_id = ?')
-      .all(repoId) as { relative_path: string }[];
-    const trackedPaths = allTrackedPaths.map((r) => r.relative_path);
-    const enabledFilePatterns = getRepoEnabledFilePatterns(db, repoId);
+    // Setup gitignore and remove from git tracking (only if user opted in)
+    let gitignoreResult: { addedPatterns: string[]; removedFromGit: string[] } = {
+      addedPatterns: [],
+      removedFromGit: [],
+    };
+    if (modifyGitignore) {
+      const allTrackedPaths = db
+        .prepare('SELECT relative_path FROM tracked_files WHERE repo_id = ?')
+        .all(repoId) as { relative_path: string }[];
+      const trackedPaths = allTrackedPaths.map((r) => r.relative_path);
+      const enabledFilePatterns = getRepoEnabledFilePatterns(db, repoId);
 
-    const gitignoreResult = await setupGitignore(localPath, trackedPaths, enabledFilePatterns);
+      gitignoreResult = await setupGitignore(localPath, trackedPaths, enabledFilePatterns);
+    }
 
     // Update machines.json mapping
     setRepoMapping(storePath, localPath);

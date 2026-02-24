@@ -31,6 +31,7 @@ export function AddRepoDialog({ open, onOpenChange, onAdded }: AddRepoDialogProp
   const [localPath, setLocalPath] = useState('');
   const [name, setName] = useState('');
   const [applyTemplate, setApplyTemplate] = useState(true);
+  const [modifyGitignore, setModifyGitignore] = useState(true);
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export function AddRepoDialog({ open, onOpenChange, onAdded }: AddRepoDialogProp
         localPath: localPath.trim(),
         name: name.trim() || undefined,
         applyTemplate,
+        modifyGitignore,
       });
       setLocalPath('');
       setName('');
@@ -128,6 +130,21 @@ export function AddRepoDialog({ open, onOpenChange, onAdded }: AddRepoDialogProp
                 onCheckedChange={(checked) => setApplyTemplate(checked)}
               />
               <Label htmlFor="applyTemplate">Apply default template</Label>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <CircleCheck
+                id="modifyGitignore"
+                checked={modifyGitignore}
+                onCheckedChange={(checked) => setModifyGitignore(checked)}
+                className="mt-0.5"
+              />
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="modifyGitignore">Update .gitignore</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add AI config file patterns to the repo's .gitignore and untrack them from Git.
+                </p>
+              </div>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
