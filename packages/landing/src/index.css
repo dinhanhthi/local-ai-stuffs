@@ -155,13 +155,18 @@
     & p {
       margin: 0.25em 0;
     }
+
+    & code {
+      background: oklch(0.12 0 0);
+    }
   }
 
   code {
     font-family: var(--font-mono);
-    font-size: 0.875em;
+    font-size: 0.95em;
+    vertical-align: baseline;
     background: var(--muted);
-    padding: 0.2em 0.4em;
+    padding: 0.15em 0.4em;
     border-radius: 0.25rem;
     color: var(--foreground);
   }
