@@ -1,7 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+
+hljs.registerLanguage('bash', bash);
 
 function CodeBlock({ children }: { children: string }) {
   const [copied, setCopied] = useState(false);
+  // Safe: input is hardcoded string literals, not user content
+  const highlighted = useMemo(
+    () => hljs.highlight(children, { language: 'bash' }).value,
+    [children],
+  );
 
   const handleCopy = () => {
     navigator.clipboard.writeText(children).then(() => {
@@ -11,14 +20,17 @@ function CodeBlock({ children }: { children: string }) {
   };
 
   return (
-    <div className="relative rounded-lg border border-border bg-muted/50 p-4 overflow-x-auto">
+    <div className="relative rounded-lg border border-border/50 overflow-x-auto">
       <button
         onClick={handleCopy}
         className="absolute top-3 right-3 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
-      <pre className="text-sm font-mono text-foreground/90 leading-relaxed">{children}</pre>
+      <pre
+        className="text-sm font-mono text-foreground/90 leading-relaxed hljs p-4 !bg-muted/50"
+        dangerouslySetInnerHTML={{ __html: highlighted }}
+      />
     </div>
   );
 }
@@ -46,7 +58,6 @@ pnpm build`}
           <CodeBlock>
             {`# Start the app
 pnpm start
-
 # Open http://localhost:2703`}
           </CodeBlock>
         </div>

@@ -3,6 +3,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import rehypeHighlight from 'rehype-highlight';
 import { cn } from '@/lib/utils';
 import changelogContent from '../../../../docs/changelog.md?raw';
 
@@ -108,7 +109,7 @@ export function ChangelogPage() {
           <div className="prose prose-sm max-w-none">
             <Markdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings]}
+              rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeHighlight]}
             >
               {changelogContent}
             </Markdown>
