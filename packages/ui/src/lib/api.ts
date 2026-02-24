@@ -230,11 +230,11 @@ export const api = {
     list: () => request<{ repos: RepoSummary[] }>('/repos'),
     get: (id: string) => request<RepoDetail>(`/repos/${id}`),
     create: (data: {
-        localPath: string;
-        name?: string;
-        applyTemplate?: boolean;
-        modifyGitignore?: boolean;
-      }) =>
+      localPath: string;
+      name?: string;
+      applyTemplate?: boolean;
+      modifyGitignore?: boolean;
+    }) =>
       request<{ repo: RepoSummary; filesTracked: number }>('/repos', {
         method: 'POST',
         body: JSON.stringify(data),

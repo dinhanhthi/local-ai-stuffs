@@ -53,7 +53,9 @@ export function WhySection() {
             key={card.title}
             className="rounded-lg border border-border bg-card p-6 transition-colors hover:border-muted-foreground/50"
           >
-            <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-md ${card.bg}`}>
+            <div
+              className={`mb-3 flex h-10 w-10 items-center justify-center rounded-md ${card.bg}`}
+            >
               <svg
                 className={`h-5 w-5 ${card.color}`}
                 fill="none"

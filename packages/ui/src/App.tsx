@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { Layout } from '@/components/layout';
 import { DashboardPage } from '@/pages/dashboard';
 import { SetupPage } from '@/pages/setup';
+import { SettingsPage } from '@/pages/settings';
 import { api } from '@/lib/api';
 import { wsClient } from '@/lib/ws';
 import { Loader2 } from 'lucide-react';
@@ -16,9 +17,6 @@ const ServiceDetailPage = lazy(() =>
 );
 const TemplatesPage = lazy(() =>
   import('@/pages/templates').then((m) => ({ default: m.TemplatesPage })),
-);
-const SettingsPage = lazy(() =>
-  import('@/pages/settings').then((m) => ({ default: m.SettingsPage })),
 );
 export default function App() {
   const [configured, setConfigured] = useState<boolean | null>(null);

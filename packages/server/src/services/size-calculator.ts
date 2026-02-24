@@ -34,17 +34,18 @@ export async function getFileSizes(
   storeBase: string,
   relativePaths: string[],
 ): Promise<Map<string, number>> {
-  const sizes = new Map<string, number>();
-  for (const relPath of relativePaths) {
-    try {
-      const fullPath = path.join(storeBase, relPath);
-      const stat = await fs.lstat(fullPath);
-      sizes.set(relPath, stat.isFile() ? stat.size : 0);
-    } catch {
-      sizes.set(relPath, 0);
-    }
-  }
-  return sizes;
+  const entries = await Promise.all(
+    relativePaths.map(async (relPath) => {
+      try {
+        const fullPath = path.join(storeBase, relPath);
+        const stat = await fs.lstat(fullPath);
+        return [relPath, stat.isFile() ? stat.size : 0] as const;
+      } catch {
+        return [relPath, 0] as const;
+      }
+    }),
+  );
+  return new Map(entries);
 }
 
 /** Default block threshold: 100 MB in bytes */

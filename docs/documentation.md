@@ -32,7 +32,7 @@ When multiple machines share the same store repository (data directory) via git,
 
 AI Sync handles this with:
 
-- **Machine Identity** — Each machine gets a unique UUID and a human-readable name (defaults to hostname), stored in the local config (`~/.ai-sync/config.json`)
+- **Machine Identity** — Each machine gets a unique UUID and a human-readable name (defaults to hostname), determined by the `machineId` and `machineName` fields in the local config (`~/.ai-sync/config.json`). These are used to identify the machine in the database and in the `machines.json` file.
 - **`machines.json`** — A git-tracked file in the store repo that maps each repo/service to each machine's local path. All machines see each other's mappings through git sync
 - **`sync-settings.json`** — A git-tracked file that stores all shared settings: global settings, file patterns, ignore patterns, and per-repo/service overrides. On startup, settings are restored from this file so customizations carry over to new machines automatically
 - **Auto-linking** — On startup, if the store contains repos or services with known paths for the current machine, they are automatically registered in the local database and start syncing. Built-in services also try the platform default path (e.g., `~/.claude/`) when no explicit mapping exists. Per-repo/service settings overrides are applied as items are linked
@@ -47,18 +47,18 @@ However, **settings and patterns are synced** via the git-tracked `sync-settings
 
 What the database stores:
 
-| Table              | Purpose                                                                | Synced via `sync-settings.json`? |
-| ------------------ | ---------------------------------------------------------------------- | -------------------------------- |
-| `repos`            | Registered repositories with local paths (different per machine)       | No (machine-specific)            |
-| `service_configs`  | Registered AI service configs with local paths                         | No (machine-specific)            |
-| `tracked_files`    | Every synced file with checksums, mtimes, and sync status              | No (machine-specific)            |
-| `conflicts`        | Pending conflicts with store/target/base/merged content for resolution | No (machine-specific)            |
-| `file_patterns`    | Glob patterns that detect AI config files                              | Yes                              |
-| `ignore_patterns`  | Glob patterns to exclude files from sync                               | Yes                              |
-| `settings`         | App configuration (sync interval, auto-commit, etc.)                   | Yes                              |
-| `repo_settings`    | Per-repo overrides for patterns and ignore rules                       | Yes (keyed by store path)        |
-| `service_settings` | Per-service overrides for patterns and ignore rules                    | Yes (keyed by store path)        |
-| `sync_log`         | Event history for debugging (auto-pruned after 30 days)                | No (machine-specific)            |
+| Table              | Purpose                                                                | Also synced via `sync-settings.json`? |
+| ------------------ | ---------------------------------------------------------------------- | ------------------------------------- |
+| `repos`            | Registered repositories with local paths (different per machine)       | No (machine-specific)                 |
+| `service_configs`  | Registered AI service configs with local paths                         | No (machine-specific)                 |
+| `tracked_files`    | Every synced file with checksums, mtimes, and sync status              | No (machine-specific)                 |
+| `conflicts`        | Pending conflicts with store/target/base/merged content for resolution | No (machine-specific)                 |
+| `file_patterns`    | Glob patterns that detect AI config files                              | Yes                                   |
+| `ignore_patterns`  | Glob patterns to exclude files from sync                               | Yes                                   |
+| `settings`         | App configuration (sync interval, auto-commit, etc.)                   | Yes                                   |
+| `repo_settings`    | Per-repo overrides for patterns and ignore rules                       | Yes (keyed by store path)             |
+| `service_settings` | Per-service overrides for patterns and ignore rules                    | Yes (keyed by store path)             |
+| `sync_log`         | Event history for debugging (auto-pruned after 30 days)                | No (machine-specific)                 |
 
 The database is created automatically on first startup. Settings and patterns are restored from `sync-settings.json` on each startup. The actual AI config files live in the git-tracked store.
 
@@ -80,7 +80,7 @@ The database is created automatically on first startup. Settings and patterns ar
 │  └──────────────┘  └──────────────┘  └───────────────┘  │
 └─────────────────────────────────────────────────────────┘
             │                    │                │
-    ┌───────┴───────┐  ┌────────┴───────┐  ┌─────┴───────────┐
+    ┌───────┴───────┐  ┌─────────┴───────┐  ┌─────┴───────────┐
     │     Store     │  │  Target Repos   │  │  AI Services    │
     │ (user chosen) │  │ /path/to/repo-1 │  │ ~/.claude/      │
     └───────────────┘  │ /path/to/repo-2 │  │ (Claude Code)   │
@@ -102,39 +102,9 @@ The database is created automatically on first startup. Settings and patterns ar
 | Git Operations  | simple-git                 |
 | Code Editor     | CodeMirror 6               |
 
-## Supported AI File Patterns
+## Supported AI Services and File Patterns
 
-| Pattern                           | Tool            |
-| --------------------------------- | --------------- |
-| `CLAUDE.md`                       | Claude Code     |
-| `.claude/**`                      | Claude Code     |
-| `GEMINI.md`                       | Gemini          |
-| `.gemini/**`                      | Gemini          |
-| `.cursor/**`                      | Cursor          |
-| `.cursorrules`                    | Cursor (legacy) |
-| `.github/copilot-instructions.md` | GitHub Copilot  |
-| `.copilot/**`                     | GitHub Copilot  |
-| `.github/skills/**`               | GitHub Skills   |
-| `.aider*`                         | Aider           |
-| `.windsurfrules`                  | Windsurf        |
-| `.agent/**`                       | Agent           |
-| `.agents/**`                      | Agents          |
-| `.opencode/**`                    | OpenCode        |
-
-Custom patterns can be added via the Settings page.
-
-## Supported AI Services
-
-In addition to per-repository AI config files, AI Sync can sync local AI service configurations. These are global settings directories that live outside of any git repository.
-
-| Service     | Local Path            | Synced Patterns                                                                                          |
-| ----------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
-| Claude Code | `~/.claude/`          | `CLAUDE.md`, `commands/**`, `plugins/installed_plugins.json`, `scripts/**`, `settings.json`, `skills/**` |
-| Gemini      | `~/.gemini/`          | `GEMINI.md`, `settings.json`, `skills/**`                                                                |
-| Agents      | `~/.agents/`          | `skills/**`                                                                                              |
-| OpenCode    | `~/.config/opencode/` | `skills/**`                                                                                              |
-| Cursor      | `~/.cursor/`          | `mcp.json`, `skills/**`                                                                                  |
-| Codex       | `~/.codex/`           | `skills/**`                                                                                              |
+In addition to per-repository AI config files, AI Sync can sync local AI service configurations. These are global settings directories that live outside of any git repository. The suported services and their file patterns are defined in the `SERVICE_DEFINITIONS` array in the [`packages/server/src/services/service-definitions.ts`](https://github.com/dinhanhthi/ai-sync/blob/main/packages/server/src/services/service-definitions.ts) file. Custom patterns can be added via the Settings page.
 
 Service configs are stored separately in the data directory under `services/<service-type>/` and use their own predefined file patterns (not the global AI File Patterns from Settings). Gitignore management is skipped since these directories are not git repositories.
 
@@ -157,10 +127,19 @@ pnpm build
 
 ```bash
 # Production mode
-pnpm start
+pnpm start # open http://localhost:2703
 
-# Development mode (with hot reload)
-pnpm dev
+# Development mode (with hot reload) for both server and UI
+pnpm dev # open http://localhost:2703
+
+# Development mode (with hot reload) for server only
+pnpm dev:server # open http://localhost:2704
+
+# Development mode (with hot reload) for UI only
+pnpm dev:ui # open http://localhost:2703
+
+# Development mode (with hot reload) for landing page only
+pnpm dev:landing # open http://localhost:2705
 
 # Override data directory via environment variable
 DATA_DIR=/path/to/data pnpm start
@@ -174,20 +153,21 @@ On startup, the server automatically creates a SQLite database at `<data-dir>/.d
 
 On your first launch, the app will show a setup screen:
 
+0. If you already have a store repo from another machine, clone it first, then point the setup to that directory.
 1. **Choose a data directory** — This is where your AI config files will be centrally stored. It will be initialized as a git repository.
 2. Click **Initialize** to complete the setup.
-
-> **Tip**: If you already have a store repo from another machine, clone it first, then point the setup to that directory.
 
 ## Adding Repositories
 
 1. On the **Dashboard**, click the **Add Repository** button.
 2. Enter the local path to a git repository on your machine.
-3. The tool will:
+3. Optionally configure:
+   - **Apply default template** — copies the `_default` template into the repo's store folder
+   - **Update .gitignore** _(checked by default)_ — adds AI config file patterns to the repo's `.gitignore` and runs `git rm --cached` to untrack matching files from git history
+4. The tool will:
    - Scan for existing AI config files in the repository
    - Import found files into the central store
-   - Update the repo's `.gitignore` to exclude AI files
-   - Run `git rm --cached` to remove tracked AI files from git history
+   - If "Update .gitignore" is checked: update `.gitignore` and untrack AI files from git
 
 ## Adding AI Services
 
@@ -373,6 +353,6 @@ The tool supports symbolic links in your repositories:
 
 - **Pause sync** for a repo or service when doing major refactoring to avoid noise
 - **Use templates** to ensure consistent AI config across all projects
-- The tool **auto-manages .gitignore** — you don't need to manually exclude AI files (for repositories; services skip this since they're not git repos)
+- The tool can **manage .gitignore** for you — enable "Update .gitignore" when adding a repo to automatically exclude AI files (for repositories; services skip this since they're not git repos)
 - **Use ignore patterns** to keep unwanted files out of sync (configured in Settings)
 - **Add AI services** to sync your local AI tool settings (e.g., Claude Code custom commands) across machines
