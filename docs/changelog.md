@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.1
+
+- Handle store config conflicts during git pull
+- Add OG meta tags and image for social sharing
+- Fix landing page click install navigation
+
 ## v0.2.0
 
 - Unify dev and prod port to 2703: Vite dev server now runs on port 2703 (was 5173), Fastify dev server moves to port 2704 as internal API backend
