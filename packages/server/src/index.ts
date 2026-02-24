@@ -58,7 +58,7 @@ async function main() {
     `Server running at http://localhost:${config.port} (${config.isDev ? 'dev' : 'production'})`,
   );
   if (config.isDev) {
-    console.log('Dev mode: UI is served by Vite at http://localhost:5173');
+    console.log('Dev mode: UI is served by Vite at http://localhost:2703');
   }
 
   if (state.syncEngine) {

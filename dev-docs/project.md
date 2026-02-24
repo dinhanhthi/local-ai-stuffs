@@ -297,7 +297,7 @@ When the sync engine writes a file, it marks the path as a "self-change" with a 
 
 ### WebSocket
 
-- `ws://localhost:2703/ws` - Real-time sync events
+- `ws://localhost:2703/ws` - Real-time sync events (proxied to :2704 in dev)
 
 ## Project Structure
 

@@ -69,7 +69,7 @@ const dataPaths = appConfig ? buildDataPaths(appConfig.dataDir) : null;
 
 export const config = {
   isDev,
-  port: parseInt(process.env.PORT || '2703', 10),
+  port: parseInt(process.env.PORT || (isDev ? '2704' : '2703'), 10),
   host: process.env.HOST || '127.0.0.1',
   uiDistPath: path.join(projectRoot, 'packages', 'ui', 'dist'),
   syncIntervalMs: 5000,

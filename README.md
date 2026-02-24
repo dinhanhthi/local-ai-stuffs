@@ -81,11 +81,11 @@ The app will automatically assign a machine identity and **auto-link** any repos
 
 ```bash
 # Start both server and UI with hot reload
-pnpm dev # open http://localhost:5173
+pnpm dev # open http://localhost:2703
 
 # Or run them separately
-pnpm dev:server   # Fastify on :2703
-pnpm dev:ui       # Vite on :5173 (proxies API to :2703)
+pnpm dev:server   # Fastify on :2704
+pnpm dev:ui       # Vite on :2703 (proxies API to :2704)
 
 # Test
 pnpm test         # Run all tests
