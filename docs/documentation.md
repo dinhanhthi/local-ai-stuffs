@@ -159,39 +159,22 @@ On your first launch, the app will show a setup screen:
 
 ## Adding Repositories
 
-1. On the **Dashboard**, click the **Add Repository** button.
-2. Enter the local path to a git repository on your machine.
-3. Optionally configure:
-   - **Apply default template** — copies the `_default` template into the repo's store folder
-   - **Update .gitignore** _(checked by default)_ — adds AI config file patterns to the repo's `.gitignore` and runs `git rm --cached` to untrack matching files from git history
-4. The tool will:
-   - Scan for existing AI config files in the repository
-   - Import found files into the central store
-   - If "Update .gitignore" is checked: update `.gitignore` and untrack AI files from git
+1. On the **Dashboard**, click **Add Repository** and enter the local path to a git repository.
+2. Optionally enable **Apply default template** (copies `_default` template) or **Update .gitignore** (adds AI file patterns and untracks matching files from git — checked by default).
+3. The tool scans for existing AI config files and imports them into the central store.
+
+To customize which files are tracked, click the **gear icon** on the repo card to override patterns and ignore rules for that specific repository.
 
 ## Adding AI Services
 
-Beyond per-repository config files, AI Sync can also sync local AI service configurations (e.g., `~/.claude/` for Claude Code).
+AI Sync can also sync local AI service configurations (e.g., `~/.claude/` for Claude Code).
 
-1. On the **Dashboard**, find the **AI Services** section and click **Add Service**.
-2. The dialog shows available services with auto-detection — if the service directory exists on your machine, it shows as "Detected".
-3. Click **Add** next to the service you want to sync.
-4. The tool will:
-   - Scan the service directory for matching files using predefined patterns (e.g., `commands/**`, `projects/**`, `CLAUDE.md`, `settings.json`, `scripts/**` for Claude Code)
-   - Copy found files to the central store under `services/<service-type>/`
-   - Start watching for changes in both directions
-   - Skip `.gitignore` management (service directories are not git repos)
+1. On the **Dashboard**, click **Add Service** — available services are shown with auto-detection ("Detected" if the directory exists).
+2. Click **Add** next to the service you want. The tool scans and imports matching files into `services/<service-type>/` and starts watching for changes in both directions.
 
-Click on a service card to open its **detail page** — it works the same as a repository detail page with file tree, editor, conflict resolver, sync/scan/pause/resume controls.
+Click on a service card to open its **detail page** (file tree, editor, conflict resolver, sync/scan/pause/resume controls).
 
-### Customizing Service Patterns
-
-Each service comes with predefined file patterns, but you can customize them per service:
-
-1. Open the service detail page and click the **gear icon** (Settings).
-2. **Toggle off** default patterns you don't want to sync (e.g., disable `projects/**` if you don't need it).
-3. **Add custom patterns** to include additional files or folders.
-4. Click **Save** — the watcher restarts automatically with the new patterns.
+Each service has predefined file patterns, but you can customize them: open the detail page, click the **gear icon**, toggle off patterns you don't need, add custom ones, then click **Save** — the watcher restarts automatically.
 
 ## Editing Files
 
@@ -251,44 +234,18 @@ Click the **gear icon** on any repo card to override global settings for that sp
 
 ### File Tree Context Menu
 
-Right-click any file or folder in the tree sidebar to access quick actions:
+Right-click any file or folder in the tree sidebar to access two actions:
 
-#### Untrack file / Untrack folder
+- **Untrack file / Untrack folder** — stops syncing without deleting from the target. The ignore pattern is saved as a local override (won't affect other repos), files are removed from the store only, and the watcher restarts. Reversible by removing the pattern.
+- **Delete from both sides** — permanently removes the file/folder from both the store and the target repo (requires confirmation, cannot be undone). No ignore pattern is added, so if the file is recreated it will be picked up again.
 
-Stops syncing a file or folder **without deleting** it from the target repo:
+Untrack patterns are persisted in the local database and in `sync-settings.json`, so they carry over to other machines automatically.
 
-1. **Right-click** a file or folder and select **Untrack file** or **Untrack folder**.
-2. The pattern (e.g., `.cursor/**` for a folder) is saved as a **local** override for that specific repo or service — it won't affect other repos.
-3. Matching files are removed from the **store only** — the original files in the target repo or service directory are left untouched.
-4. The file watcher restarts automatically to stop tracking the ignored paths going forward.
+## Pushing / Pulling Changes to/from Remote
 
-Use this when you want to exclude files from sync but keep them in your project.
+If your data directory is connected to a remote git repository, use the **Push** button in the footer to push your store to the remote. This backs up your AI configs and makes them available on other machines.
 
-#### Delete from both sides
-
-Permanently removes a file or folder from **both** the store and the target repo:
-
-1. **Right-click** a file or folder and select **Delete from both sides**.
-2. A confirmation dialog appears — this action **cannot be undone**.
-3. On confirm, the files are deleted from both the central store and the target repo or service directory, and their tracking records are removed from the database.
-
-Use this when you want to completely get rid of files from both sides. Unlike Untrack, no ignore pattern is added — if the file is recreated later, it will be picked up by the watcher again.
-
-#### Quick comparison
-
-|                          | **Untrack**                         | **Delete from both sides** |
-| ------------------------ | ----------------------------------- | -------------------------- |
-| Removes from store       | Yes                                 | Yes                        |
-| Removes from target repo | No                                  | Yes                        |
-| Adds ignore pattern      | Yes (local)                         | No                         |
-| Confirmation required    | No                                  | Yes                        |
-| Reversible               | Yes — remove the pattern to re-sync | No                         |
-
-These patterns are persisted in the local SQLite database and also in the git-tracked `sync-settings.json` file, so they carry over to other machines automatically when you clone the store.
-
-## Pushing Changes to Remote
-
-If your data directory is connected to a remote git repository, use the **Push changes** button in the footer to push your store to the remote. This backs up your AI configs and makes them available on other machines
+Use the **Pull** button to pull the latest changes from the remote. This will merge the remote changes into your local store.
 
 ## Setting Up on a New Machine
 
