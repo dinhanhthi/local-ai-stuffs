@@ -1,10 +1,16 @@
 import { PatternList } from '@/components/pattern-list';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { api, type ServicePatternEntry, type ServiceIgnorePatternEntry } from '@/lib/api';
 import { Loader2, Save } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface ServiceSettingsDialogProps {
@@ -26,6 +32,20 @@ export function ServiceSettingsDialog({
   const [ignorePatterns, setIgnorePatterns] = useState<ServiceIgnorePatternEntry[]>([]);
   const [newPattern, setNewPattern] = useState('');
   const [newIgnorePattern, setNewIgnorePattern] = useState('');
+  const savedPatterns = useRef('');
+  const savedIgnorePatterns = useRef('');
+
+  const stripPatterns = (ps: (ServicePatternEntry | ServiceIgnorePatternEntry)[]) =>
+    ps.map(({ pattern, enabled, source }) => ({ pattern, enabled, source }));
+
+  const snapshotAll = (p: ServicePatternEntry[], ip: ServiceIgnorePatternEntry[]) => {
+    savedPatterns.current = JSON.stringify(stripPatterns(p));
+    savedIgnorePatterns.current = JSON.stringify(stripPatterns(ip));
+  };
+
+  const hasChanges =
+    JSON.stringify(stripPatterns(patterns)) !== savedPatterns.current ||
+    JSON.stringify(stripPatterns(ignorePatterns)) !== savedIgnorePatterns.current;
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -33,6 +53,7 @@ export function ServiceSettingsDialog({
       const data = await api.services.getSettings(serviceId);
       setPatterns(data.patterns);
       setIgnorePatterns(data.ignorePatterns);
+      snapshotAll(data.patterns, data.ignorePatterns);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load settings');
     } finally {
@@ -48,6 +69,7 @@ export function ServiceSettingsDialog({
     setSaving(true);
     try {
       await api.services.updateSettings(serviceId, { patterns, ignorePatterns });
+      snapshotAll(patterns, ignorePatterns);
       toast.success('Service settings saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save settings');
@@ -120,7 +142,13 @@ export function ServiceSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-base">Service Settings - {serviceName}</DialogTitle>
+          <DialogTitle className="text-base flex items-center gap-2">
+            Service Settings
+            <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium font-mono text-muted-foreground ring-1 ring-inset ring-border">
+              {serviceName}
+            </span>
+          </DialogTitle>
+          <DialogDescription className="sr-only">Settings for {serviceName}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -187,7 +215,7 @@ export function ServiceSettingsDialog({
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (

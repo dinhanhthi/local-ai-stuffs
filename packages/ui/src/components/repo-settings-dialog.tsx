@@ -54,6 +54,27 @@ export function RepoSettingsDialog({
   const [cleaningIgnored, setCleaningIgnored] = useState(false);
   const [showCleanConfirm, setShowCleanConfirm] = useState(false);
   const globalSettingsRef = useRef<Record<string, string>>({});
+  const savedSettings = useRef('');
+  const savedFilePatterns = useRef('');
+  const savedIgnorePatterns = useRef('');
+
+  const stripPatterns = (ps: RepoPatternEntry[]) =>
+    ps.map(({ pattern, enabled, source }) => ({ pattern, enabled, source }));
+
+  const snapshotAll = (
+    s: Record<string, SettingsEntry>,
+    fp: RepoPatternEntry[],
+    ip: RepoPatternEntry[],
+  ) => {
+    savedSettings.current = JSON.stringify(s);
+    savedFilePatterns.current = JSON.stringify(stripPatterns(fp));
+    savedIgnorePatterns.current = JSON.stringify(stripPatterns(ip));
+  };
+
+  const hasChanges =
+    JSON.stringify(settings) !== savedSettings.current ||
+    JSON.stringify(stripPatterns(filePatterns)) !== savedFilePatterns.current ||
+    JSON.stringify(stripPatterns(ignorePatterns)) !== savedIgnorePatterns.current;
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -66,6 +87,7 @@ export function RepoSettingsDialog({
       setSettings(data.settings);
       setFilePatterns(data.filePatterns);
       setIgnorePatterns(data.ignorePatterns);
+      snapshotAll(data.settings, data.filePatterns, data.ignorePatterns);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load settings');
     } finally {
@@ -93,6 +115,7 @@ export function RepoSettingsDialog({
         filePatterns,
         ignorePatterns,
       });
+      snapshotAll(settings, filePatterns, ignorePatterns);
       toast.success('Repository settings saved');
       setShowApplyAfterSave(true);
     } catch (err) {
@@ -232,8 +255,13 @@ export function RepoSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-base">Repository Settings</DialogTitle>
-          <DialogDescription className="font-mono text-xs">{repoName}</DialogDescription>
+          <DialogTitle className="text-base flex items-center gap-2">
+            Repository Settings
+            <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium font-mono text-muted-foreground ring-1 ring-inset ring-border">
+              {repoName}
+            </span>
+          </DialogTitle>
+          <DialogDescription className="sr-only">Settings for {repoName}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -357,7 +385,7 @@ export function RepoSettingsDialog({
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -438,6 +466,7 @@ export function RepoSettingsDialog({
         title="Update target .gitignore file?"
         description="Settings have been saved. Would you like to update the .gitignore file in the target repository to reflect the new patterns?"
         confirmLabel="Apply to .gitignore"
+        cancelLabel="Skip"
       />
 
       <AlertDialog open={showCleanConfirm} onOpenChange={setShowCleanConfirm}>
