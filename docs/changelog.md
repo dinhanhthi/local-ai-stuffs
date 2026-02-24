@@ -7,6 +7,7 @@
 - Add cross-machine service linking: unlinked services now appear on the dashboard with Link/Delete/Auto-link actions, matching existing repo linking behavior. Store custom service metadata in single `services/services.json`
 - Add landing page with documentation and installation instructions
 - Ask user before modifying `.gitignore` when adding a new repo (opt-in checkbox in Add Repository dialog)
+- Add setting to control file tree default expand/collapse when opening a repo or service (collapsed by default)
 
 ## v0.1.4
 

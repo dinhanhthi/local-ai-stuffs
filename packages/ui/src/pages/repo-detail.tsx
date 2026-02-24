@@ -151,7 +151,7 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
   const [bulkResolveAction, setBulkResolveAction] = useState<string | null>(null);
   const [conflictFilter, setConflictFilter] = useState(false);
   const fileTreeRef = useRef<FileTreeHandle>(null);
-  const [allCollapsed, setAllCollapsed] = useState(false);
+  const [allCollapsed, setAllCollapsed] = useState(settings.tree_default_expanded !== 'true');
   const [syncing, setSyncing] = useState(false);
   const [scanning, setScanning] = useState(false);
   // Repo-only states
@@ -822,6 +822,7 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
                   onResolve={handleResolveFile}
                   onDelete={setDeleteFilePath}
                   sizeThresholds={sizeThresholds}
+                  initialExpanded={settings.tree_default_expanded === 'true'}
                 />
               ) : (
                 <div className="text-sm text-muted-foreground p-2 h-full flex flex-col gap-2 items-center justify-center">

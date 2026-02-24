@@ -164,6 +164,8 @@ interface FileTreeProps {
   onDelete?: (path: string) => void;
   /** Size thresholds for coloring file/folder sizes */
   sizeThresholds?: SizeThresholds;
+  /** Whether to expand all folders on initial render (default: true) */
+  initialExpanded?: boolean;
 }
 
 function getAllDirs(items: FileTreeItem[]): Set<string> {
@@ -218,11 +220,14 @@ export const FileTree = forwardRef(function FileTree(
     onResolve,
     onDelete,
     sizeThresholds,
+    initialExpanded = true,
   }: FileTreeProps,
   ref: Ref<FileTreeHandle>,
 ) {
-  // Track expanded folders; expand all by default
-  const [expanded, setExpanded] = useState<Set<string>>(() => getAllDirs(items));
+  // Track expanded folders; expand or collapse based on initialExpanded prop
+  const [expanded, setExpanded] = useState<Set<string>>(() =>
+    initialExpanded ? getAllDirs(items) : new Set(),
+  );
 
   const allDirs = getAllDirs(items);
   const isAllCollapsed = allDirs.size > 0 && expanded.size === 0;

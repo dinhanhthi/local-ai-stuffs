@@ -327,6 +327,17 @@ export function SettingsPage() {
                     })
                   }
                 />
+                <CheckboxSettingRow
+                  label="Expand file tree by default when opening a repo/service"
+                  settingKey="tree_default_expanded"
+                  checked={settings.tree_default_expanded === 'true'}
+                  onCheckedChange={(checked) =>
+                    setSettings({
+                      ...settings,
+                      tree_default_expanded: checked ? 'true' : 'false',
+                    })
+                  }
+                />
               </div>
 
               <div className="py-4 border-t">
