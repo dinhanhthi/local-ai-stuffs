@@ -24,6 +24,8 @@ import {
   Star,
   Terminal,
   Link,
+  EyeOff,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -45,6 +47,7 @@ export function DashboardPage() {
   const [togglingSync, setTogglingSync] = useState(false);
   const [autoLinking, setAutoLinking] = useState(false);
   const [conflictFilter, setConflictFilter] = useState(false);
+  const [hidePaused, setHidePaused] = useState(false);
 
   const refetchAll = useCallback(() => {
     refetch();
@@ -58,10 +61,14 @@ export function DashboardPage() {
   const hasConflicts = conflicts.length > 0;
   const conflictRepoIds = new Set(conflicts.map((c) => c.repoId).filter(Boolean));
   const conflictServiceIds = new Set(conflicts.map((c) => c.serviceId).filter(Boolean));
-  const filteredRepos = conflictFilter ? repos.filter((r) => conflictRepoIds.has(r.id)) : repos;
-  const filteredServices = conflictFilter
-    ? services.filter((s) => conflictServiceIds.has(s.id))
-    : services;
+  const filteredRepos = (
+    conflictFilter ? repos.filter((r) => conflictRepoIds.has(r.id)) : repos
+  ).filter((r) => !hidePaused || r.status !== 'paused');
+  const filteredServices = (
+    conflictFilter ? services.filter((s) => conflictServiceIds.has(s.id)) : services
+  ).filter((s) => !hidePaused || s.status !== 'paused');
+  const pausedRepoCount = repos.filter((r) => r.status === 'paused').length;
+  const pausedServiceCount = services.filter((s) => s.status === 'paused').length;
   const favorites = filteredRepos.filter((r) => r.isFavorite);
   const others = filteredRepos.filter((r) => !r.isFavorite);
 
@@ -129,6 +136,27 @@ export function DashboardPage() {
           </div>
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Toggle
+                      size="icon-sm"
+                      variant="outline"
+                      pressed={hidePaused}
+                      onPressedChange={setHidePaused}
+                    >
+                      {hidePaused ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </Toggle>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {hidePaused ? 'Show paused cards' : 'Hide paused cards'}
+                </TooltipContent>
+              </Tooltip>
               {hasConflicts && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -199,6 +227,11 @@ export function DashboardPage() {
               <div className="flex items-center gap-2">
                 <Terminal className="h-4 w-4 text-muted-foreground" />
                 <h3 className="text-base font-medium">AI Services</h3>
+                {hidePaused && pausedServiceCount > 0 && (
+                  <span className="text-xs text-muted-foreground/70">
+                    {pausedServiceCount} paused hidden
+                  </span>
+                )}
               </div>
               <Button variant="outline" size="sm" onClick={() => setAddServiceOpen(true)}>
                 <Plus className="h-3.5 w-3.5" />
@@ -291,6 +324,11 @@ export function DashboardPage() {
             <div className="flex items-center gap-2">
               <FolderGit2 className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-base font-medium">Repositories</h3>
+              {hidePaused && pausedRepoCount > 0 && (
+                <span className="text-xs text-muted-foreground/70">
+                  {pausedRepoCount} paused hidden
+                </span>
+              )}
             </div>
             <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
