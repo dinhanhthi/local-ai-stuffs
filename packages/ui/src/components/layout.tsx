@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
+import { api, type StoreConfigConflict } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import {
   Database,
@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './confirm-dialog';
+import { StoreConfigConflictDialog } from './store-config-conflict-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { UpdateBanner } from './update-banner';
 import { useMachine } from '@/hooks/use-machines';
@@ -36,6 +37,9 @@ export function Layout({ children, dataDir }: { children: React.ReactNode; dataD
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
+  const [storeConfigConflicts, setStoreConfigConflicts] = useState<StoreConfigConflict[] | null>(
+    null,
+  );
   const { machineName } = useMachine();
 
   useEffect(() => {
@@ -86,7 +90,10 @@ export function Layout({ children, dataDir }: { children: React.ReactNode; dataD
     setPulling(true);
     try {
       const result = await api.store.pull();
-      if (result.pulled) {
+      if (result.storeConflicts && result.storeConflicts.length > 0) {
+        setStoreConfigConflicts(result.storeConflicts);
+        toast.warning('Pull completed with config conflicts — please resolve them');
+      } else if (result.pulled) {
         toast.success(result.message);
       } else {
         toast.warning(result.message);
@@ -296,6 +303,13 @@ export function Layout({ children, dataDir }: { children: React.ReactNode; dataD
         description="Push all committed store changes to the remote repository?"
         confirmLabel="Push"
       />
+
+      {storeConfigConflicts && storeConfigConflicts.length > 0 && (
+        <StoreConfigConflictDialog
+          conflicts={storeConfigConflicts}
+          onResolved={() => setStoreConfigConflicts(null)}
+        />
+      )}
     </div>
   );
 }

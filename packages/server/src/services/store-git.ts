@@ -196,15 +196,124 @@ async function resolveRemote(): Promise<string | null> {
   return remotes.find((r) => r.name === 'origin')?.name ?? remotes[0].name;
 }
 
-export async function pullStoreChanges(): Promise<{ pulled: boolean; message: string }> {
+export interface StoreConfigConflict {
+  file: 'sync-settings.json' | 'machines.json';
+  content: string; // raw content with git conflict markers
+  ours: string; // content of the "ours" (HEAD) side
+  theirs: string; // content of the "theirs" (incoming) side
+}
+
+export interface PullResult {
+  pulled: boolean;
+  message: string;
+  storeConflicts?: StoreConfigConflict[];
+}
+
+/** Parse conflict markers from a conflicted file, returning ours and theirs content. */
+function parseConflictSides(content: string): { ours: string; theirs: string } {
+  // Collect lines from each side by scanning conflict blocks
+  const oursLines: string[] = [];
+  const theirsLines: string[] = [];
+  let inOurs = false;
+  let inTheirs = false;
+
+  for (const line of content.split('\n')) {
+    if (line.startsWith('<<<<<<<')) {
+      inOurs = true;
+      inTheirs = false;
+    } else if (line.startsWith('=======')) {
+      inOurs = false;
+      inTheirs = true;
+    } else if (line.startsWith('>>>>>>>')) {
+      inOurs = false;
+      inTheirs = false;
+    } else if (inOurs) {
+      oursLines.push(line);
+    } else if (inTheirs) {
+      theirsLines.push(line);
+    } else {
+      // Context lines outside conflict blocks — include in both
+      oursLines.push(line);
+      theirsLines.push(line);
+    }
+  }
+
+  return { ours: oursLines.join('\n'), theirs: theirsLines.join('\n') };
+}
+
+export async function pullStoreChanges(): Promise<PullResult> {
   const remote = await resolveRemote();
   if (!remote) {
     return { pulled: false, message: 'No remote configured' };
   }
 
-  const branch = await git!.branchLocal();
-  await git!.pull(remote, branch.current);
+  if (!git) {
+    git = createGit(config.storePath);
+  }
+
+  const branch = await git.branchLocal();
+  try {
+    await git.pull(remote, branch.current);
+  } catch (err) {
+    // If git pull itself throws (e.g. merge conflict), check status for conflicted files
+    const status = await git.status();
+    const conflictedPaths = status.conflicted;
+
+    const knownConfigFiles = ['sync-settings.json', 'machines.json'] as const;
+    const storeConflicts: StoreConfigConflict[] = [];
+
+    for (const filePath of conflictedPaths) {
+      const basename = path.basename(filePath) as (typeof knownConfigFiles)[number];
+      if (!knownConfigFiles.includes(basename)) continue;
+
+      const fullPath = path.join(config.storePath, filePath);
+      let content = '';
+      try {
+        content = await fs.readFile(fullPath, 'utf-8');
+      } catch {
+        continue;
+      }
+
+      const { ours, theirs } = parseConflictSides(content);
+      storeConflicts.push({ file: basename, content, ours, theirs });
+    }
+
+    if (storeConflicts.length > 0) {
+      return {
+        pulled: true,
+        message: `Pulled from ${remote}/${branch.current} with config conflicts`,
+        storeConflicts,
+      };
+    }
+
+    // Re-throw if no config conflicts (other errors like network issues)
+    throw err;
+  }
+
   return { pulled: true, message: `Pulled from ${remote}/${branch.current}` };
+}
+
+/**
+ * Resolve a store config conflict by writing the chosen content to disk,
+ * then staging and committing the resolution.
+ */
+export async function resolveStoreConfigConflict(
+  file: 'sync-settings.json' | 'machines.json',
+  content: string,
+): Promise<void> {
+  if (!git) {
+    git = createGit(config.storePath);
+  }
+
+  const fullPath = path.join(config.storePath, file);
+  await fs.writeFile(fullPath, content, 'utf-8');
+  await git.add(file);
+
+  // Check if all conflicts are resolved before committing
+  const status = await git.status();
+  if (status.conflicted.length === 0) {
+    await git.commit(`Resolve conflict in ${file}`);
+  }
 }
 
 export async function pushStoreChanges(): Promise<{ pushed: boolean; message: string }> {

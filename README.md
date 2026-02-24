@@ -77,6 +77,7 @@ pnpm install && pnpm build && pnpm start
 On the setup screen, point to your existing data directory (clone your store repo first if needed).
 
 The app will automatically:
+
 - Assign a unique machine ID and name (based on hostname)
 - Restore all shared settings from `sync-settings.json`
 - Auto-link repos and services that have known paths for this machine

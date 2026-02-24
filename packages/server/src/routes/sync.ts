@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import type { SyncLogEntry } from '../types/index.js';
 import type { AppState } from '../app-state.js';
 import { mapRows } from '../db/index.js';
-import { pullStoreChanges, pushStoreChanges, getStoreRemoteUrl } from '../services/store-git.js';
+import {
+  pullStoreChanges,
+  pushStoreChanges,
+  getStoreRemoteUrl,
+  resolveStoreConfigConflict,
+} from '../services/store-git.js';
+import { restoreSettingsFromFile } from '../services/sync-settings.js';
 
 interface SyncLogEntryWithRepo extends SyncLogEntry {
   repoName: string | null;
@@ -26,6 +32,39 @@ export function registerSyncRoutes(app: FastifyInstance, state: AppState): void 
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Pull failed';
+      return reply.code(500).send({ error: message });
+    }
+  });
+
+  // Resolve a store config conflict (sync-settings.json or machines.json)
+  app.post<{
+    Params: { file: string };
+    Body: { content: string };
+  }>('/api/store/resolve-config/:file', async (req, reply) => {
+    if (!state.db) return reply.code(503).send({ error: 'Not configured' });
+    const db = state.db;
+
+    const file = req.params.file;
+    if (file !== 'sync-settings.json' && file !== 'machines.json') {
+      return reply.code(400).send({ error: 'Invalid file name' });
+    }
+
+    const { content } = req.body;
+    if (typeof content !== 'string') {
+      return reply.code(400).send({ error: 'Missing content' });
+    }
+
+    try {
+      await resolveStoreConfigConflict(file, content);
+
+      // Reload settings into DB if sync-settings.json was resolved
+      if (file === 'sync-settings.json') {
+        restoreSettingsFromFile(db);
+      }
+
+      return { resolved: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Resolve failed';
       return reply.code(500).send({ error: message });
     }
   });

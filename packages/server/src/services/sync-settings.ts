@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { mapRows } from '../db/index.js';
 import { DEFAULT_SETTINGS } from '../db/schema.js';
 import type { Repo, ServiceConfig } from '../types/index.js';
+import { queueStoreCommit } from './store-git.js';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -136,6 +137,7 @@ export function writeSyncSettingsFile(data: SyncSettingsFile): void {
   };
 
   fs.writeFileSync(filePath, JSON.stringify(sorted, null, 2) + '\n', 'utf-8');
+  queueStoreCommit('Update sync-settings.json');
 }
 
 // ── Read DB state into file sections ─────────────────────────────────

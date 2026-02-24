@@ -58,6 +58,19 @@ export interface ConflictDetail {
   relativePath: string;
 }
 
+export interface StoreConfigConflict {
+  file: 'sync-settings.json' | 'machines.json';
+  content: string;
+  ours: string;
+  theirs: string;
+}
+
+export interface PullResult {
+  pulled: boolean;
+  message: string;
+  storeConflicts?: StoreConfigConflict[];
+}
+
 export interface ServiceSummary {
   id: string;
   serviceType: string;
@@ -378,9 +391,14 @@ export const api = {
   },
 
   store: {
-    pull: () => request<{ pulled: boolean; message: string }>('/store/pull', { method: 'POST' }),
+    pull: () => request<PullResult>('/store/pull', { method: 'POST' }),
     push: () => request<{ pushed: boolean; message: string }>('/store/push', { method: 'POST' }),
     remote: () => request<{ url: string | null }>('/store/remote'),
+    resolveConfig: (file: 'sync-settings.json' | 'machines.json', content: string) =>
+      request<{ resolved: boolean }>(`/store/resolve-config/${file}`, {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      }),
   },
 
   clone: {

@@ -21,6 +21,7 @@ import { getRepoEnabledFilePatterns } from '../db/index.js';
 import { applyOverridesForRepo, applyOverridesForService } from './sync-settings.js';
 import { getServiceDefinition, registerCustomDefinition } from './service-definitions.js';
 import { scanServiceFiles } from './service-scanner.js';
+import { queueStoreCommit } from './store-git.js';
 
 const MACHINES_FILE = 'machines.json';
 
@@ -56,6 +57,7 @@ export function writeMachinesFile(data: MachinesFile): void {
     services: sortKeys(data.services),
   };
   fs.writeFileSync(filePath, JSON.stringify(sorted, null, 2) + '\n', 'utf-8');
+  queueStoreCommit('Update machines.json');
 }
 
 function sortKeys<T>(obj: Record<string, T>): Record<string, T> {
