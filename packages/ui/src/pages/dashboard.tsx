@@ -39,7 +39,7 @@ export function DashboardPage() {
     loading: unlinkedLoading,
     refetch: refetchUnlinked,
   } = useUnlinkedRepos();
-  const { settings } = useSettings();
+  const { settings, refetch: refetchSettings } = useSettings();
   const sizeThresholds = parseSizeThresholds(settings);
   const [addOpen, setAddOpen] = useState(false);
   const [addServiceOpen, setAddServiceOpen] = useState(false);
@@ -47,7 +47,12 @@ export function DashboardPage() {
   const [togglingSync, setTogglingSync] = useState(false);
   const [autoLinking, setAutoLinking] = useState(false);
   const [conflictFilter, setConflictFilter] = useState(false);
-  const [hidePaused, setHidePaused] = useState(false);
+  const hidePaused = settings.hide_paused_cards === 'true';
+
+  const handleToggleHidePaused = async (pressed: boolean) => {
+    await api.settings.update({ hide_paused_cards: String(pressed) });
+    refetchSettings();
+  };
 
   const refetchAll = useCallback(() => {
     refetch();
@@ -143,7 +148,7 @@ export function DashboardPage() {
                       size="icon-sm"
                       variant="outline"
                       pressed={hidePaused}
-                      onPressedChange={setHidePaused}
+                      onPressedChange={handleToggleHidePaused}
                     >
                       {hidePaused ? (
                         <EyeOff className="h-3.5 w-3.5" />

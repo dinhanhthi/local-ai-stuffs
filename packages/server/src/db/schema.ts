@@ -105,6 +105,7 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   size_warning_mb: '20',
   size_danger_mb: '50',
   size_blocked_mb: '100',
+  hide_paused_cards: 'false',
 };
 
 export function initSchema(db: Database.Database): void {
