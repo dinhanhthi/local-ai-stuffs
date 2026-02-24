@@ -1,7 +1,7 @@
 {
   "name": "@ai-sync/server",
   "author": "Anh-Thi Dinh",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "repository": "https://github.com/anhthiding/ai-sync",
   "private": true,
   "license": "MIT",

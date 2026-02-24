@@ -1,9 +1,12 @@
 # Changelog
 
+## v0.2.3
+
+- **fix**: Critical bug: bad conflict handling after `git pull` auto-merges
+
 ## v0.2.2
 
 - **fix**: Post-pull sync using wrong base: after git pull, the sync engine now uses the pre-pull commit as the merge base, correctly detecting remote vs local changes instead of always keeping local
-- **fix**: Critical bug: bad conflict handling after `git pull` auto-merges
 
 ## v0.2.1
 

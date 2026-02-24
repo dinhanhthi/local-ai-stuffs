@@ -64,7 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border/50 animate-fade-up">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 animate-fade-up">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
           <Link
             to="/"
@@ -150,7 +150,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 pb-[53px]">{children}</div>
 
       {/* Footer */}
-      <footer className="fixed bottom-0 left-0 w-full z-40 border-t border-border/50 bg-background/80 backdrop-blur-md py-3">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/50 bg-background/80 backdrop-blur-md py-3">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} AI Sync. Built for developers by{' '}

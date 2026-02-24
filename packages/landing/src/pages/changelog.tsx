@@ -101,10 +101,10 @@ export function ChangelogPage() {
   const toc = useMemo(() => extractToc(changelogContent), []);
 
   return (
-    <div className="flex flex-1 min-h-0 mx-auto max-w-6xl w-full px-4 sm:px-6 lg:px-8">
+    <div className="flex flex-1 min-h-0 mx-auto max-w-5xl w-full px-4 sm:px-6 lg:px-8">
       {/* Main content */}
       <main ref={contentRef} className="flex-1 min-w-0 overflow-y-auto py-8">
-        <article className="max-w-3xl mx-auto">
+        <article className="max-w-5xl mx-auto">
           <div className="prose prose-sm max-w-none">
             <Markdown
               remarkPlugins={[remarkGfm]}

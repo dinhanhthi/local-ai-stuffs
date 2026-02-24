@@ -89,10 +89,10 @@ export function DocsPage() {
   const toc = useMemo(() => extractToc(docContent), []);
 
   return (
-    <div className="mx-auto max-w-6xl w-full px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl w-full px-4 sm:px-6 lg:px-8">
       {/* Main content */}
       <main className="lg:mr-64 py-8">
-        <article className="max-w-3xl mx-auto">
+        <article className="max-w-5xl mx-auto">
           <div className="prose prose-sm max-w-none">
             <Markdown
               remarkPlugins={[remarkGfm]}
@@ -106,7 +106,7 @@ export function DocsPage() {
 
       {/* Right sidebar - TOC (hidden on small screens) */}
       {toc.length > 0 && (
-        <aside className="hidden lg:block fixed top-[65px] right-[max(1rem,calc((100vw-72rem)/2))] w-56">
+        <aside className="hidden lg:block fixed top-[65px] right-[max(1rem,calc((100vw-64rem)/2))] w-56">
           <div className="py-8 pl-8">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               On this page
