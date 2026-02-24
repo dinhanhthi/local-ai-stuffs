@@ -69,6 +69,7 @@ export interface PullResult {
   pulled: boolean;
   message: string;
   storeConflicts?: StoreConfigConflict[];
+  prePullCommitHash?: string;
 }
 
 export interface ServiceSummary {

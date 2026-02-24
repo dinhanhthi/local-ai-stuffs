@@ -27,6 +27,7 @@ import { sendConflictNotification, clearNotifiedConflict } from './notifier.js';
 import {
   queueStoreCommit,
   getCommittedContent,
+  getCommittedContentAt,
   ensureStoreCommitted,
   gitMergeFile,
 } from './store-git.js';
@@ -89,6 +90,7 @@ export class SyncEngine {
   private ignoreMatcherCache = new Map<string, picomatch.Matcher>();
   private lastLogCleanup = 0;
   private sizeBlockLoggedAt = new Map<string, number>();
+  private baseCommitOverride: string | null = null;
 
   constructor(db: Database.Database) {
     this.db = db;
@@ -583,7 +585,9 @@ export class SyncEngine {
     // Get the "base" version: last committed state in store git repo
     const storeGitRelative = getStoreGitRelativePath(target, trackedFile.relativePath);
 
-    const baseContent = await getCommittedContent(storeGitRelative);
+    const baseContent = this.baseCommitOverride
+      ? await getCommittedContentAt(storeGitRelative, this.baseCommitOverride)
+      : await getCommittedContent(storeGitRelative);
 
     if (baseContent === null) {
       // No git history (new file, first sync) — fall back to checksum-based detection
@@ -1350,6 +1354,21 @@ export class SyncEngine {
       } catch (err) {
         console.error(`Error syncing service ${svc.name}:`, err);
       }
+    }
+  }
+
+  /**
+   * Run a full sync pass using a specific commit as the base reference.
+   * Used after git pull to correctly detect which side changed:
+   * the pre-pull HEAD is the correct base, not the post-pull HEAD.
+   */
+  async syncAfterPull(prePullCommitHash: string): Promise<void> {
+    this.baseCommitOverride = prePullCommitHash;
+    try {
+      await this.syncAllRepos();
+      await this.syncAllServices();
+    } finally {
+      this.baseCommitOverride = null;
     }
   }
 

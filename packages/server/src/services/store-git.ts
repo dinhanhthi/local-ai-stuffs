@@ -207,6 +207,7 @@ export interface PullResult {
   pulled: boolean;
   message: string;
   storeConflicts?: StoreConfigConflict[];
+  prePullCommitHash?: string;
 }
 
 /** Parse conflict markers from a conflicted file, returning ours and theirs content. */
@@ -252,6 +253,10 @@ export async function pullStoreChanges(): Promise<PullResult> {
   }
 
   const branch = await git.branchLocal();
+
+  // Capture HEAD before pulling — this is the correct base for 3-way merge
+  const prePullHash = await getHeadCommitHash();
+
   try {
     await git.pull(remote, branch.current);
   } catch (err) {
@@ -283,6 +288,7 @@ export async function pullStoreChanges(): Promise<PullResult> {
         pulled: true,
         message: `Pulled from ${remote}/${branch.current} with config conflicts`,
         storeConflicts,
+        prePullCommitHash: prePullHash ?? undefined,
       };
     }
 
@@ -290,7 +296,11 @@ export async function pullStoreChanges(): Promise<PullResult> {
     throw err;
   }
 
-  return { pulled: true, message: `Pulled from ${remote}/${branch.current}` };
+  return {
+    pulled: true,
+    message: `Pulled from ${remote}/${branch.current}`,
+    prePullCommitHash: prePullHash ?? undefined,
+  };
 }
 
 /**
@@ -368,6 +378,40 @@ export async function getCommittedContent(relativePath: string): Promise<string 
     return await git.raw(['show', `HEAD:${relativePath}`]);
   } catch {
     // File doesn't exist in git history (new file or no commits yet)
+    return null;
+  }
+}
+
+/**
+ * Get the committed content of a file at a specific commit ref.
+ * Used to retrieve the pre-pull base for 3-way merge after git pull.
+ * Returns null if the file doesn't exist at that commit.
+ */
+export async function getCommittedContentAt(
+  relativePath: string,
+  commitRef: string,
+): Promise<string | null> {
+  if (!git) {
+    git = createGit(config.storePath);
+  }
+  try {
+    return await git.raw(['show', `${commitRef}:${relativePath}`]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get the current HEAD commit hash of the store repo.
+ */
+export async function getHeadCommitHash(): Promise<string | null> {
+  if (!git) {
+    git = createGit(config.storePath);
+  }
+  try {
+    const hash = await git.raw(['rev-parse', 'HEAD']);
+    return hash.trim();
+  } catch {
     return null;
   }
 }

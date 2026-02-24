@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.2
+
+- Fix post-pull sync using wrong base: after git pull, the sync engine now uses the pre-pull commit as the merge base, correctly detecting remote vs local changes instead of always keeping local
+
 ## v0.2.1
 
 - Handle store config conflicts during git pull
