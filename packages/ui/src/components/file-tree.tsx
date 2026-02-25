@@ -497,11 +497,11 @@ function TreeNodeView({
             <>
               <ContextMenuItem onClick={() => onResolve(node.fullPath, 'keep_store')}>
                 <Database className="h-3.5 w-3.5" />
-                Keep Store
+                Keep changes from store
               </ContextMenuItem>
               <ContextMenuItem onClick={() => onResolve(node.fullPath, 'keep_target')}>
                 <GitBranch className="h-3.5 w-3.5" />
-                Keep Target
+                Keep changes from target
               </ContextMenuItem>
             </>
           )}

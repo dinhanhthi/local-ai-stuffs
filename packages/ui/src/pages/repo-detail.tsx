@@ -419,7 +419,7 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
           setSelectedFile(null);
         }
         refetch();
-        toast.success(`Resolved: ${resolution === 'keep_store' ? 'Keep Store' : 'Keep Target'}`);
+        toast.success(`Resolved: Keep changes from ${resolution === 'keep_store' ? 'store' : 'target'}`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to resolve conflict');
       }
@@ -616,14 +616,14 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
         description={
           bulkResolveAction === 'delete'
             ? 'Delete all conflicting files from both store and target? This cannot be undone.'
-            : `Resolve all conflicts by ${bulkResolveAction === 'keep_store' ? 'keeping store versions' : 'keeping target versions'}? This will overwrite the other side.`
+            : `Resolve all conflicts by ${bulkResolveAction === 'keep_store' ? 'keeping changes from store' : 'keeping changes from target'}? This will overwrite the other side.`
         }
         confirmLabel={
           bulkResolveAction === 'delete'
             ? 'Delete all'
             : bulkResolveAction === 'keep_store'
-              ? 'Keep Store'
-              : 'Keep Target'
+              ? 'Keep changes from store'
+              : 'Keep changes from target'
         }
         variant={bulkResolveAction === 'delete' ? 'destructive' : 'default'}
       />
@@ -760,17 +760,17 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => setBulkResolveAction('keep_store')}>
-                      Resolve all: Keep Store
+                      Keep changes from store for all files
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setBulkResolveAction('keep_target')}>
-                      Resolve all: Keep Target
+                      Keep changes from target for all files
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive"
                       onClick={() => setBulkResolveAction('delete')}
                     >
-                      Resolve all: Delete Files
+                      Delete files for all conflicts
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

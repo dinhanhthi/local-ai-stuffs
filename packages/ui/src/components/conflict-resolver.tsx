@@ -167,10 +167,10 @@ export function ConflictResolver({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => handleResolve('keep_store')}>
-            Keep Store
+            Keep changes from store
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleResolve('keep_target')}>
-            Keep Target
+            Keep changes from target
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleResolve('manual')}>Save Manual</DropdownMenuItem>
           <DropdownMenuSeparator />
