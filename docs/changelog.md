@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.4
+
+- **feat**: Persist hide-paused-cards toggle in global settings
+- **feat**: Add toggle to hide paused cards on dashboard
+- **feat**: Include landing page in `pnpm dev`
+- **feat**: Add syntax highlighting to code blocks on landing page
+- **improve**: Repo/service settings UX with dirty-state tracking and better labels
+- **improve**: Conflict resolution UI labels for clarity ("Keep changes from store/target" instead of "Keep Store/Target")
+- **fix**: Landing page client-side routing with Vercel rewrites
+
 ## v0.2.3
 
 - **fix**: Critical bug: bad conflict handling after `git pull` auto-merges
