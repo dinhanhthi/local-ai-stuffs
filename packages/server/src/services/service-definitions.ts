@@ -17,6 +17,7 @@ export const SERVICE_DEFINITIONS: Record<string, ServiceDefinition> = {
       'CLAUDE.md',
       'commands/**',
       'plugins/installed_plugins.json',
+      'projects/*/memory/**',
       'scripts/**',
       'settings.json',
       'skills/**',
