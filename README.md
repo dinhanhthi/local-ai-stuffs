@@ -1,10 +1,19 @@
-# AI Sync
-
 <p align="center">
   <img src="assets/logo.svg" alt="AI Sync Logo" width="100" />
 </p>
 
-Centralized management tool for AI configuration files (`CLAUDE.md`, `.cursor/`, `GEMINI.md`, `.github/copilot-instructions.md`, etc.) across Git repositories and local AI services. Keep files synced across all your repos, and sync local AI service configs (e.g., `~/.claude/` for Claude Code) — all without committing them.
+<h1 align="center">AI Sync</h1>
+
+<p align="center">
+  Centralized management tool for AI configuration files across Git repositories.
+</p>
+
+<p align="center">
+  <a href="https://ai-sync.dinhanhthi.com">Website</a> ·
+  <a href="https://ai-sync.dinhanhthi.com/docs">Documentation</a> ·
+  <a href="https://ai-sync.dinhanhthi.com/changelog">Changelog</a> ·
+  <a href="https://github.com/dinhanhthi/ai-sync/issues">Report Bug</a>
+</p>
 
 > [!WARNING]  
 > This repository is in heavy development, use at your own risk.
