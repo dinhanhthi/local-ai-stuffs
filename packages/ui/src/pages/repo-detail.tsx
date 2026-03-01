@@ -419,7 +419,9 @@ function DetailPage({ type }: { type: 'repo' | 'service' }) {
           setSelectedFile(null);
         }
         refetch();
-        toast.success(`Resolved: Keep changes from ${resolution === 'keep_store' ? 'store' : 'target'}`);
+        toast.success(
+          `Resolved: Keep changes from ${resolution === 'keep_store' ? 'store' : 'target'}`,
+        );
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to resolve conflict');
       }

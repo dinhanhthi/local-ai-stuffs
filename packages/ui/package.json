@@ -1,7 +1,6 @@
 {
   "name": "@ai-sync/ui",
   "author": "Anh-Thi Dinh",
-  "version": "0.2.4",
   "repository": "https://github.com/anhthiding/ai-sync",
   "private": true,
   "license": "MIT",
@@ -39,7 +38,9 @@
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.1.0",
+    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
     "tw-animate-css": "^1.4.0"

@@ -8,7 +8,9 @@ import { EditorView, keymap, type KeyBinding } from '@codemirror/view';
 import { EditorSelection } from '@codemirror/state';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
-import { Save, WrapText } from 'lucide-react';
+import { Eye, PencilLine, Save, WrapText } from 'lucide-react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface FileEditorProps {
   content: string;
@@ -73,6 +75,7 @@ export function FileEditor({ content, filePath, onSave, toolbarTarget }: FileEdi
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [wordWrap, setWordWrap] = useState(true);
+  const [preview, setPreview] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [editorHeight, setEditorHeight] = useState('500px');
 
@@ -139,18 +142,32 @@ export function FileEditor({ content, filePath, onSave, toolbarTarget }: FileEdi
     }),
   ]);
 
+  const isMd = isMarkdownFile(filePath);
+
   const toolbar = (
     <div className="flex gap-2">
+      {isMd && (
+        <Toggle
+          size="icon-sm"
+          variant="outline"
+          pressed={preview}
+          onPressedChange={setPreview}
+          aria-label="Toggle markdown preview"
+        >
+          {preview ? <PencilLine className="size-4" /> : <Eye className="size-4" />}
+        </Toggle>
+      )}
       <Toggle
         size="icon-sm"
         variant="outline"
         pressed={wordWrap}
         onPressedChange={setWordWrap}
+        disabled={preview}
         aria-label="Toggle word wrap"
       >
         <WrapText className="size-4" />
       </Toggle>
-      <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
+      <Button size="sm" onClick={handleSave} disabled={preview || !dirty || saving}>
         <Save className="size-4 mr-1" />
         {saving ? 'Saving...' : 'Save'}
       </Button>
@@ -161,17 +178,26 @@ export function FileEditor({ content, filePath, onSave, toolbarTarget }: FileEdi
     <div className="flex h-full min-h-0 flex-col">
       {toolbarTarget && createPortal(toolbar, toolbarTarget)}
       <div ref={containerRef} className="min-h-0 flex-1 rounded-none border overflow-hidden">
-        <CodeMirror
-          value={value}
-          height={editorHeight}
-          theme={oneDark}
-          extensions={[
-            ...getExtensions(filePath),
-            ...(wordWrap ? [EditorView.lineWrapping] : []),
-            ...editorKeymap.current,
-          ]}
-          onChange={handleChange}
-        />
+        {preview ? (
+          <div
+            className="prose prose-sm p-4 overflow-y-auto h-full"
+            style={{ height: editorHeight }}
+          >
+            <Markdown remarkPlugins={[remarkGfm]}>{value}</Markdown>
+          </div>
+        ) : (
+          <CodeMirror
+            value={value}
+            height={editorHeight}
+            theme={oneDark}
+            extensions={[
+              ...getExtensions(filePath),
+              ...(wordWrap ? [EditorView.lineWrapping] : []),
+              ...editorKeymap.current,
+            ]}
+            onChange={handleChange}
+          />
+        )}
       </div>
     </div>
   );

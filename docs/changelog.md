@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.5
+
+- **feat**: Markdown preview toggle in file editor
+- **feat**: Project memory tracking for services
+
 ## v0.2.4
 
 - **feat**: Hide paused cards toggle (persisted in settings)
